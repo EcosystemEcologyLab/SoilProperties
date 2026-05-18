@@ -1,0 +1,43 @@
+{
+  "name": "SoilUnitAnalysis",
+  "image": "ghcr.io/rocker-org/devcontainer/tidyverse:4.4",
+
+  "features": {
+    "ghcr.io/rocker-org/devcontainer-features/r-packages:1": {
+      "packages": "pak,languageserver",
+      "installSystemRequirements": true
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "reditorsupport.r",
+        "github.copilot"
+      ]
+    }
+  }
+}
+
+// ─── NOTES ───────────────────────────────────────────────────────────────────
+// 1. Use tidyverse:4.4 not tidyverse:4.4.2 — the patch tag does not exist for
+//    devcontainer images and will cause an immediate build failure.
+//
+// 2. Keep this file minimal. Do not add onCreateCommand or postCreateCommand.
+//    Claude Code handles package installation interactively — baking it into
+//    the container build causes long, opaque build failures.
+//
+// 3. Do not add the Python devcontainer feature. If the project uses Python
+//    (e.g. via reticulate), Python is managed inside the R package virtualenv.
+//    Adding Python as a system feature causes path conflicts.
+//
+// 4. Do not add RENV_PATHS_CACHE. The default path does not exist in the
+//    container and causes renv to fail silently.
+//
+// 5. If your project needs additional VS Code extensions, add them to the
+//    extensions array above.
+//
+// 6. Replace "your-repo-name" with the actual repository name.
+//
+// See CODESPACE_SETUP.md for full setup instructions.
