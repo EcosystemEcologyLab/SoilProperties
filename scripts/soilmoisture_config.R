@@ -5,11 +5,12 @@
 # ── External paths ─────────────────────────────────────────────────────────────
 # DAILY_DATA_DIR: network drive folder containing daily entry .xlsx files.
 #   Change the drive letter / path if the mapping differs on your machine.
-DAILY_DATA_DIR <- file.path("X:", "moore", "2026Angie_SoilProp",
+DAILY_DATA_DIR <- file.path("X:", "moore", "2026_B2_SoilProp", "Data",
                             "SoilMoisture", "B2_SoilMoisture_DataSheet_DailyData")
 
 # MASTER_CSV: git-tracked master data file, relative to project root.
-MASTER_CSV  <- file.path("data", "B2_SoilMoisture_FullData.csv")
+MASTER_CSV  <- file.path("X:", "moore", "2026_B2_SoilProp",
+                         "Code", "data", "B2_SoilMoisture_FullData.csv")
 
 # APPEND_LOG: run-level provenance log (outputs/ is gitignored; created at runtime).
 APPEND_LOG  <- file.path("outputs", "append_log.csv")
