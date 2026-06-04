@@ -57,13 +57,12 @@ The following directories are gitignored and must never be committed:
 
 The following directories are git-tracked:
 - `data/reference/` — vg_parameters.csv, infiltrometer_radii.csv (source of truth for math constants)
-- `data/overrides/` — human override decisions (infiltration_overrides.csv)
+- `data/reference/` — vg_parameters.csv, infiltrometer_radii.csv, subplot_soiltexture.csv (Subplot→USDA texture lookup; confirmed by Lindsey Bell 2026-06-04)
 
 ### 4. Pipeline hard rules
-- Every output must have a companion `{output}.meta.json` (written by `write_meta()`).
-- No record is ever silently dropped: exclusions go to `outputs/exclusion_log.csv`, unknowns to `outputs/unknown_log.csv`.
-- Override decisions (`data/overrides/`) are read-only for scripts; the scientist edits them directly.
-- All scientifically meaningful thresholds live in `R/pipeline_config.R` as documented named constants — never as magic numbers inline in scripts.
+- Entry pipeline is **stop-loudly**: print violations table, `stop()`, scientist fixes source `.xlsx` and re-runs. Nothing is silently dropped or flagged-and-continued.
+- All scientifically meaningful thresholds live in `R/soilinfiltration_config.R` as documented named constants — never as magic numbers inline in scripts.
+- `SoilTexture` is never entered in the field sheet — it is derived automatically from `Subplot` via `data/reference/subplot_soiltexture.csv`.
 
 ---
 
@@ -71,30 +70,38 @@ The following directories are git-tracked:
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `NEON_TOKEN` | Personal access token for `neonUtilities` downloads (avoids anonymous rate limits) | none required — anonymous access works |
+| (none required) | No credentials are needed to run either pipeline | — |
 
 ---
 
 ## Pipeline Execution Order
 
-Run from the project root; each script accepts a single file path argument.
+### Entry pipeline (interactive, run from RStudio)
+
+1. Open `SoilProperties.Rproj` in RStudio (sets working dir to project root).
+2. Enter data into both sheets of a new `.xlsx` file using the template at
+   `output_template/Soil_Infiltration_FieldData_template.xlsx`.
+   File must be named `Soil_Infiltration_FieldData_YYYYMMDD.xlsx`.
+3. `source("R/clean_soilinfiltration.R")` — prompts for the filename, then:
+   - Step 1: compares Sheet1 and Sheet2 cell-by-cell; `stop()` on any mismatch
+   - Step 2: validates date, per-row rules, and replicate rules; `stop()` on any violation
+   - Step 3: appends Sheet1 rows (with Date prepended) to `data/B2_SoilInfiltration_FullData.csv`
+             and writes one row to `outputs/infiltration_append_log.csv`
+4. Commit the updated `data/B2_SoilInfiltration_FullData.csv` to a branch and open a PR.
+
+### Compute pipeline (batch, run from terminal)
 
 ```
-R/01_qaqc_entry.R <field_sheet.xlsx>
-  → QA/QC the daily field sheet; writes data/processed/{site}_{date}_infiltration_clean.csv
-    plus appends to outputs/exclusion_log.csv and outputs/unknown_log.csv
-
-R/02_calculate_infiltration.R <..._infiltration_clean.csv>
-  → Fit I=C1√t+C2t, compute K via Zhang(1997)/van Genuchten; writes one
-    data/processed/{site}_{date}_{soiltype}_infiltration_results.csv and
-    figures/{site}_{date}_{soiltype}_curves.pdf per soil type, each with
-    a .meta.json companion
-
-R/03_append_fulldata.R <..._infiltration_results.csv>
-  → Append replicate results to data/processed/B2_SoilInfiltration_FullData.xlsx
-    (dedup key: site+date+plot+point_id; collisions preserved; overrides via
-    data/overrides/infiltration_overrides.csv)
+Rscript R/calculate_infiltration.R
 ```
+
+Reads `data/B2_SoilInfiltration_FullData.csv`, derives SoilTexture from Subplot
+(via `data/reference/subplot_soiltexture.csv`), fits I = C1√t + C2t per replicate
+(grouped by Date + Site + Subplot), computes K via Zhang (1997) / van Genuchten.
+
+Writes:
+- `data/processed/B2_SoilInfiltration_Results.csv` — one row per replicate
+- `figures/B2_SoilInfiltration_curves_<YYYYMMDD>.pdf` — one panel per replicate
 
 ---
 
@@ -106,10 +113,9 @@ R/03_append_fulldata.R <..._infiltration_results.csv>
 - Use base R pipe `|>` not `%>%` in new code; existing scripts use `%>%` (dplyr)
 
 ### Package preferences
-- Data manipulation: dplyr, tidyr
-- Reading field sheets: readxl (input), openxlsx (output xlsx)
+- Data manipulation: dplyr, purrr
+- Reading/writing field sheets: openxlsx
 - Plotting: ggplot2
-- Metadata: jsonlite, digest
 - Testing: testthat
 - Do not introduce new package dependencies without discussion
 
@@ -121,80 +127,81 @@ R/03_append_fulldata.R <..._infiltration_results.csv>
 
 ## QC and Quality Standards
 
-Six QC rules are applied in order by `R/01_qaqc_entry.R`; first failure wins:
-1. **soil_type controlled vocabulary** — empty → UNKNOWN; unrecognised → EXCLUDE
-2. **Numeric ranges** — missing time/volume → UNKNOWN; negative or > MAX_VOLUME_ML (95 mL) → EXCLUDE
-3. **Monotonic time** — time decreasing within a replicate → EXCLUDE offending row
-4. **Monotonic volume** — volume rise > VOL_MONOTONIC_TOLERANCE_ML (1 mL) → EXCLUDE offending row
-5. **Suction validity** — suction not in VALID_SUCTIONS_CM {0.5,1,2,3,4,5,6,7} → EXCLUDE entire site-date
-6. **t=0 anchor** — no t=0 row in replicate → UNKNOWN, replicate dropped
+### Entry pipeline — stop-loudly (`R/clean_soilinfiltration.R`)
 
-Fit quality (`R/02_calculate_infiltration.R`):
-- `r² < MIN_FIT_R2 (0.95)` → `REVIEW_low_r2` (kept, scientist reviews)
-- `C1 ≤ 0` → `REVIEW_negative_C1`, K set to NA
-- `n < MIN_FIT_POINTS (5)` → `UNKNOWN_insufficient_points`, K set to NA
+**Step 1 — double-entry comparison** (`detect_sheet_mismatches`):
+- Sheet1 and Sheet2 must have the same row count and identical values in every cell.
+- Mismatches are classified as `value`, `whitespace`, or `case`.
+- Any mismatch: print table → `stop()`.
 
-All thresholds are declared as named constants in `R/pipeline_config.R`.
+**Step 2 — per-row rules** (`detect_row_violations`); all rows checked before stopping:
+- Site: missing → violation
+- Subplot: missing → violation; not in VALID_SUBPLOTS → violation
+- SuctionRate: missing → violation; not numeric → violation; not in VALID_SUCTIONS_CM → violation
+- Time: missing → violation; negative → violation; > TIME_MAX_S (21 600 s) → violation
+- Volume: missing → violation; negative → violation; > MAX_VOLUME_ML (95 mL) → violation
+- SoilMoisture_12cm: **no checks** (reference measurement, carried through unchanged)
+
+**Step 2 — replicate rules** (`detect_replicate_violations`; only if per-row passes):
+- Per (Site, Subplot) group: exactly one t=0 anchor; Time strictly increasing; Volume
+  non-increasing within VOL_MONOTONIC_TOLERANCE_ML (1 mL); SuctionRate constant.
+
+All thresholds are declared as documented named constants in `R/soilinfiltration_config.R`.
+
+### Compute pipeline — quality flags (`R/calculate_infiltration.R`)
+
+Fit quality is not a data-entry error — flags do not stop the script; every replicate gets a row:
+
+| `qc_flag` | Meaning |
+|---|---|
+| `OK` | r² ≥ 0.95 and C1 > 0; K reported |
+| `REVIEW_low_r2` | r² < MIN_FIT_R2 (0.95); K reported, scientist reviews |
+| `REVIEW_negative_C1` | C1 ≤ 0 (unphysical); K = NA |
+| `UNKNOWN_insufficient_points` | n < MIN_FIT_POINTS (5); K = NA |
+| `UNKNOWN_no_texture_lookup` | Subplot not found in subplot_soiltexture.csv; K = NA |
 
 ---
 
 ## Confidence and Quality Vocabulary
 
-This project uses the shared vocabulary from SCIENCE_PRINCIPLES.md:
+The fit-quality flags in `R/calculate_infiltration.R` map to the shared vocabulary from SCIENCE_PRINCIPLES.md:
 
-| Label | `qc_flag` value | Meaning |
-|---|---|---|
-| HIGH | `OK` | Fit meets all thresholds; K reported |
-| MEDIUM | `REVIEW_low_r2` | r² below MIN_FIT_R2 (0.95); K reported but flagged for review |
-| LOW / EXCLUDE | `REVIEW_negative_C1` | Negative C1; K set to NA; logged to exclusion log |
-| UNKNOWN | `UNKNOWN_insufficient_points` | Too few points to fit; K = NA; logged to unknown log |
+| Shared label | `qc_flag` value |
+|---|---|
+| HIGH | `OK` |
+| MEDIUM | `REVIEW_low_r2` |
+| LOW | `REVIEW_negative_C1` |
+| UNKNOWN | `UNKNOWN_insufficient_points`, `UNKNOWN_no_texture_lookup` |
 
-QA/QC exclusion rows carry no confidence label — they never reach the fit stage.
+Entry-pipeline violations (`clean_soilinfiltration.R`) carry no confidence label — they stop the script before any data reaches the compute stage.
 
 ---
 
 ## Output Metadata
 
-Every CSV and PDF produced by scripts 02 and 03 gets a companion `{filename}.meta.json`
-written by `R/write_meta.R`. The JSON contains:
+Provenance is tracked via the append log rather than per-file JSON companions.
 
-```json
-{
-  "run_datetime_utc": "2026-06-02T18:25:56Z",
-  "pipeline_version": "d60875f",
-  "input_sources": [{"path": "...", "sha256": "..."}],
-  "r_session_info": "outputs/session_info.txt",
-  "notes": "free-text provenance notes"
-}
-```
+**`outputs/infiltration_append_log.csv`** — one row per `clean_soilinfiltration.R` run:
 
-`outputs/session_info.txt` captures `sessionInfo()` from the R session that produced the outputs.
-All `*.meta.json` files and `outputs/` are gitignored; they are regenerated by running the pipeline.
+| Column | Contents |
+|---|---|
+| `run_datetime_utc` | ISO 8601 UTC timestamp of the run |
+| `file_appended` | Basename of the daily `.xlsx` file processed |
+| `date_appended` | Field date (YYYY-MM-DD) |
+| `n_rows` | Number of rows appended to the master CSV |
+| `git_commit` | Short hash of the repo at run time |
+
+`outputs/` is gitignored; the log is regenerated by the pipeline. The master CSV
+(`data/B2_SoilInfiltration_FullData.csv`) is git-tracked — committing it after each
+field day provides the full append history via `git log`.
 
 ---
 
 ## Exclusion Logging
 
-Two append-mode CSV logs live in `outputs/` (gitignored, regenerated by the pipeline):
+There are **no exclusion or unknown logs** in the entry pipeline. The stop-loudly model means no data is silently dropped — violations stop the script and the scientist fixes the source file. There is nothing to log.
 
-**`outputs/exclusion_log.csv`** — records every row that was removed from analysis:
-| Column | Contents |
-|---|---|
-| `site_id` | Site name |
-| `variable` | Column that triggered the rule (or `ALL` for site-date-level exclusions) |
-| `timestamp` | time_s value of the excluded row (or `ALL`) |
-| `reason` | machine-readable reason code (e.g. `soil_type_unrecognised`, `non_monotonic_volume`) |
-| `threshold` | the rule that was violated |
-| `excluded_by` | script filename that wrote the row |
-
-**`outputs/unknown_log.csv`** — records records that could not be classified (missing data, insufficient points):
-| Column | Contents |
-|---|---|
-| `record_id` | `site_date_plot_point_id` key |
-| `reason` | machine-readable reason code (e.g. `soil_type_missing`, `no_t0_anchor`) |
-| `logged_by` | script filename that wrote the row |
-
-Both logs are created (header-only) even on a clean run, per "write both logs even if empty".
+The compute pipeline (`R/calculate_infiltration.R`) uses `qc_flag` values in the results CSV to flag replicates that could not yield a valid K (see QC and Quality Standards above). These are not "excluded" — they appear in the results with `K_cm_per_s = NA` and a descriptive `qc_flag`.
 
 ---
 
