@@ -59,6 +59,11 @@ write_test_sheet <- function(path, meta, blocks) {
 #' Run script 01 on a fixture with logs/outputs redirected to a temp dir.
 #' Returns list(exclusion = <df>, unknown = <df>, clean_path = <chr>).
 run_qaqc_isolated <- function(meta, blocks) {
+  # testthat::test_file() changes the working directory to the test file's
+  # directory before running tests; source("R/...") inside the pipeline scripts
+  # is relative to the project root, so we pin it here.
+  old_wd <- setwd(PROJECT_ROOT)
+  on.exit(setwd(old_wd), add = TRUE)
   source(file.path(PROJECT_ROOT, "R", "01_qaqc_entry.R"), local = FALSE)
   tmp <- tempfile("qaqc_"); dir.create(tmp)
   sheet <- file.path(tmp, "sheet.xlsx")
