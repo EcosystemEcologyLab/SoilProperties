@@ -9,11 +9,10 @@
 
 # ── External paths ─────────────────────────────────────────────────────────────
 # DAILY_DATA_DIR: network drive folder containing daily entry .xlsx files.
-#   TODO: confirm leaf folder name with Lindsey before first production run.
-#   Assumed to mirror the moisture path (SoilMoisture/B2_SoilMoisture_DataSheet_DailyData).
+#   Confirmed by Lindsey Bell 2026-06-04.
 DAILY_DATA_DIR <- file.path("X:", "moore", "2026_B2_SoilProp", "Data",
-                            "SoilInfiltration",
-                            "B2_SoilInfiltration_DataSheet_DailyData")
+                            "Infiltration",
+                            "Soil_Infiltration_FieldData_Raw")
 
 # MASTER_CSV: git-tracked master data file, relative to project root.
 #   Parallel to data/B2_SoilMoisture_FullData.csv.
