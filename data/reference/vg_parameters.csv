@@ -1,0 +1,13 @@
+soil_type,alpha,n
+sand,0.145,2.68
+loamy sand,0.124,2.28
+sandy loam,0.075,1.89
+loam,0.036,1.56
+silt,0.016,1.37
+silt loam,0.020,1.41
+sandy clay loam,0.059,1.48
+clay loam,0.019,1.31
+silty clay loam,0.010,1.23
+sandy clay,0.027,1.23
+silty clay,0.005,1.09
+clay,0.008,1.09
