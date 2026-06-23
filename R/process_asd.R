@@ -15,7 +15,7 @@
 #  CONFIGURATION — edit these paths before each run
 # ============================================================
 
-date        <- "20260617"   # YYYYMMDD — change this each run
+date        <- "20261011"   # YYYYMMDD — change this each run
 
 base_path   <- "X:/moore/2026_B2_SoilProp/Data/ASD"
 
