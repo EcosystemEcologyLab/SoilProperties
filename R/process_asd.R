@@ -2,30 +2,38 @@
 #
 # process_asd.R — Process ASD Field Spec 3 hyperspectral data
 #
-# Required packages: optparse, dplyr, readr
-# Install: install.packages(c("optparse", "dplyr", "readr"))
+# Required packages: dplyr, readr
+# Install: install.packages(c("dplyr", "readr"))
 #
 # Expected reflectance file format (ASD ViewSpec Pro "ProcessedReflectance" export):
 #   Tab-delimited; first column = wavelengths (350–2500 nm); remaining columns =
 #   one reflectance series per leaf collection (wavelengths as rows, scans as cols).
 #
-# SpectralID CSV column mapping (use --plant-id-col / --leaf-col to match your file):
-#   --plant-id-col  column that identifies the plant (default: plantID)
-#   --leaf-col      column that identifies the leaf number (default: leafNumber)
-#   --group-cols    comma-separated extra columns to include in the indices summary
-#                   grouping, e.g. "Panel" to keep full/partial scans separate
-#   All other SpectralID columns are carried through to SpectralFieldData.csv.
-#
-# Usage:
-#   Rscript process_asd.R \
-#     --reflectance /path/to/ProcessedReflectance_YYYYMMDD.txt \
-#     --spectral-id /path/to/SpectralID_YYYYMMDD.csv \
-#     --output-spectral /path/to/SpectralFieldData.csv \
-#     --output-indices  /path/to/SpectralIndices_FullData.csv \
-#     --plant-id-col Genus --leaf-col "Leaf#" --group-cols Panel
+# Run as: Rscript process_asd.R
+
+# ============================================================
+#  CONFIGURATION — edit these paths before each run
+# ============================================================
+
+date        <- "20260617"   # YYYYMMDD — change this each run
+
+base_path   <- "X:/moore/2026_B2_SoilProp/Data/ASD"
+
+reflectance_file <- file.path(base_path, "ProcessedReflectance",
+                               paste0("ProcessedReflectance_", date, ".txt"))
+spectral_id_file <- file.path(base_path, "SpectralID",
+                               paste0("SpectralID_", date, ".csv"))
+output_spectral  <- file.path(base_path, "FullSpectralFieldData",
+                               "SpectralFieldData.csv")
+output_indices   <- "X:/moore/2026_B2_SoilProp/Code/data/SpectralIndices_FullData.csv"
+
+plant_id_col <- "Genus"   # SpectralID column to use as plant identifier
+leaf_col     <- "Leaf#"   # SpectralID column to use as leaf number
+group_cols   <- NULL      # set to e.g. "Panel" if needed, otherwise leave NULL
+
+# ============================================================
 
 suppressPackageStartupMessages({
-  library(optparse)
   library(dplyr)
   library(readr)
 })
@@ -126,83 +134,20 @@ append_csv <- function(df, path) {
 }
 
 # --------------------------------------------------------------------------- #
-#  Argument parsing                                                            #
-# --------------------------------------------------------------------------- #
-
-option_list <- list(
-  make_option(
-    c("--reflectance"), dest = "reflectance", type = "character", default = NULL,
-    help = "Path to ProcessedReflectance_YYYYMMDD.txt [required]"
-  ),
-  make_option(
-    c("--spectral-id"), dest = "spectral_id", type = "character", default = NULL,
-    help = "Path to SpectralID_YYYYMMDD.csv [required]"
-  ),
-  make_option(
-    c("--output-spectral"), dest = "output_spectral", type = "character", default = NULL,
-    help = "Path to SpectralFieldData.csv (created or appended to) [required]"
-  ),
-  make_option(
-    c("--output-indices"), dest = "output_indices", type = "character", default = NULL,
-    help = "Path to SpectralIndices_FullData.csv (created or appended to) [required]"
-  ),
-  make_option(
-    c("--plant-id-col"), dest = "plant_id_col", type = "character", default = "plantID",
-    help = "SpectralID column to use as plant identifier, renamed to plantID in output [default: plantID]"
-  ),
-  make_option(
-    c("--leaf-col"), dest = "leaf_col", type = "character", default = "leafNumber",
-    help = "SpectralID column to use as leaf number, renamed to leafNumber in output [default: leafNumber]"
-  ),
-  make_option(
-    c("--group-cols"), dest = "group_cols", type = "character", default = NULL,
-    help = "Comma-separated extra SpectralID columns to include in indices summary grouping (e.g. Panel)"
-  )
-)
-
-parser <- OptionParser(
-  usage = paste(
-    "Rscript process_asd.R",
-    "--reflectance <file> --spectral-id <file>",
-    "--output-spectral <file> --output-indices <file>",
-    "[--plant-id-col <col>] [--leaf-col <col>] [--group-cols <col1,col2>]"
-  ),
-  option_list = option_list,
-  description = paste(
-    "Process ASD Field Spec 3 hyperspectral data for one field day.",
-    "Appends full spectra to SpectralFieldData.csv and per-plant spectral-index",
-    "summaries to SpectralIndices_FullData.csv."
-  )
-)
-
-args <- parse_args(parser)
-
-missing_args <- character(0)
-if (is.null(args$reflectance))     missing_args <- c(missing_args, "--reflectance")
-if (is.null(args$spectral_id))     missing_args <- c(missing_args, "--spectral-id")
-if (is.null(args$output_spectral)) missing_args <- c(missing_args, "--output-spectral")
-if (is.null(args$output_indices))  missing_args <- c(missing_args, "--output-indices")
-
-if (length(missing_args) > 0) {
-  print_help(parser)
-  stop("Missing required arguments: ", paste(missing_args, collapse = ", "), call. = FALSE)
-}
-
-# --------------------------------------------------------------------------- #
 #  Step 1 — Read inputs and join row-by-row                                   #
 # --------------------------------------------------------------------------- #
 
 log_msg("Step 1: Reading inputs")
 
-if (!file.exists(args$reflectance)) {
-  stop("Reflectance file not found: ", args$reflectance, call. = FALSE)
+if (!file.exists(reflectance_file)) {
+  stop("Reflectance file not found: ", reflectance_file, call. = FALSE)
 }
-if (!file.exists(args$spectral_id)) {
-  stop("SpectralID file not found: ", args$spectral_id, call. = FALSE)
+if (!file.exists(spectral_id_file)) {
+  stop("SpectralID file not found: ", spectral_id_file, call. = FALSE)
 }
 
-field_date  <- parse_date_from_filename(args$reflectance)
-refl_result <- read_reflectance(args$reflectance)
+field_date  <- parse_date_from_filename(reflectance_file)
+refl_result <- read_reflectance(reflectance_file)
 refl_df     <- refl_result$data
 wl_vec      <- refl_result$wl
 
@@ -211,7 +156,7 @@ log_msg(sprintf(
   nrow(refl_df), ncol(refl_df), field_date
 ))
 
-meta_df <- readr::read_csv(args$spectral_id, show_col_types = FALSE)
+meta_df <- readr::read_csv(spectral_id_file, show_col_types = FALSE)
 log_msg(sprintf(
   "  SpectralID: %d rows, columns: %s",
   nrow(meta_df), paste(names(meta_df), collapse = ", ")
@@ -224,32 +169,25 @@ if (nrow(refl_df) != nrow(meta_df)) {
   ), call. = FALSE)
 }
 
-# Validate and rename user-specified columns to standard names
-id_col   <- args$plant_id_col
-leaf_col <- args$leaf_col
-
-missing_cols <- setdiff(c(id_col, leaf_col), names(meta_df))
+# Validate and rename config-specified columns to standard names used throughout
+missing_cols <- setdiff(c(plant_id_col, leaf_col), names(meta_df))
 if (length(missing_cols) > 0) {
   stop(
-    "SpectralID CSV is missing column(s) specified by --plant-id-col / --leaf-col: ",
+    "SpectralID CSV is missing column(s) specified in the config block: ",
     paste(missing_cols, collapse = ", "),
     call. = FALSE
   )
 }
 
-meta_df <- dplyr::rename(meta_df, plantID = !!id_col, leafNumber = !!leaf_col)
+meta_df <- dplyr::rename(meta_df, plantID = !!plant_id_col, leafNumber = !!leaf_col)
 
-# Parse extra grouping columns (e.g. "Panel") for the indices summary
-extra_grp <- if (!is.null(args$group_cols)) {
-  trimws(strsplit(args$group_cols, ",")[[1]])
-} else {
-  character(0)
-}
+# Resolve extra grouping columns (group_cols may be NULL, a string, or a vector)
+extra_grp <- if (is.null(group_cols)) character(0) else as.character(group_cols)
 
 missing_grp <- setdiff(extra_grp, names(meta_df))
 if (length(missing_grp) > 0) {
   stop(
-    "--group-cols column(s) not found in SpectralID CSV: ",
+    "group_cols column(s) not found in SpectralID CSV: ",
     paste(missing_grp, collapse = ", "),
     call. = FALSE
   )
@@ -270,7 +208,7 @@ log_msg(sprintf("  Joined: %d rows x %d columns", nrow(joined_df), ncol(joined_d
 #  Step 2 — Append full spectral output                                       #
 # --------------------------------------------------------------------------- #
 
-log_msg(sprintf("Step 2: Appending full spectral data to %s", args$output_spectral))
+log_msg(sprintf("Step 2: Appending full spectral data to %s", output_spectral))
 
 # Use a regex-based selector to avoid accidentally picking up plantID (starts with "p")
 wl_cols      <- grep("^p[0-9]+$", names(joined_df), value = TRUE)
@@ -280,7 +218,7 @@ spectral_out <- dplyr::select(
   dplyr::all_of(wl_cols)
 )
 
-append_csv(spectral_out, args$output_spectral)
+append_csv(spectral_out, output_spectral)
 log_msg(sprintf("  Appended %d rows", nrow(spectral_out)))
 
 # --------------------------------------------------------------------------- #
@@ -337,10 +275,10 @@ log_msg(sprintf("  Summary: %d plant-date rows", nrow(summary_df)))
 #  Step 5 — Append indices summary with duplicate guard                       #
 # --------------------------------------------------------------------------- #
 
-log_msg(sprintf("Step 5: Appending spectral indices to %s", args$output_indices))
+log_msg(sprintf("Step 5: Appending spectral indices to %s", output_indices))
 
-if (file.exists(args$output_indices)) {
-  existing <- readr::read_csv(args$output_indices, show_col_types = FALSE)
+if (file.exists(output_indices)) {
+  existing <- readr::read_csv(output_indices, show_col_types = FALSE)
 
   dups <- dplyr::semi_join(summary_df, existing, by = group_key_cols)
 
@@ -353,7 +291,7 @@ if (file.exists(args$output_indices)) {
     warning(
       sprintf(
         "%d duplicate group(s) already in %s — skipping:\n  %s",
-        nrow(dups), basename(args$output_indices), dup_desc
+        nrow(dups), basename(output_indices), dup_desc
       ),
       call. = FALSE
     )
@@ -362,7 +300,7 @@ if (file.exists(args$output_indices)) {
 }
 
 if (nrow(summary_df) > 0) {
-  append_csv(summary_df, args$output_indices)
+  append_csv(summary_df, output_indices)
   log_msg(sprintf("  Appended %d row(s)", nrow(summary_df)))
 } else {
   log_msg("  No new rows to append (all were duplicates)")
