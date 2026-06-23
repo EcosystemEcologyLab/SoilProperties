@@ -35,3 +35,7 @@ __pycache__/
 # ── Windows ───────────────────────────────────────────────────────────────────
 Thumbs.db
 .positai
+
+# ── ASD hyperspectral data files (uploaded for testing, not source-controlled) ─
+.devcontainer/ProcessedReflectance_*.txt
+.devcontainer/SpectralID_*.csv
