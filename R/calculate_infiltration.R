@@ -81,7 +81,12 @@ suppressPackageStartupMessages({
   } else if (is.na(fit$r2) || fit$r2 < MIN_FIT_R2) {
     "REVIEW_low_r2"
   } else {
-    "OK"
+    k_upper <- unname(K_UPPER_CM_HR[tools::toTitleCase(soil_texture)])
+    if (!is.na(k_upper) && !is.na(K) && (K * 3600) > k_upper) {
+      "REVIEW_high_K"
+    } else {
+      "OK"
+    }
   }
 
   # Take first non-NA soil moisture reading for the replicate
@@ -231,12 +236,13 @@ run_calculate_infiltration <- function(master_csv = MASTER_CSV) {
                         paste0("B2_SoilInfiltration_curves_", run_date, ".png"))
   .write_curves_png(master, results, png_path)
 
-  n_ok  <- sum(results$qc_flag == "OK",            na.rm = TRUE)
-  n_rev <- sum(grepl("^REVIEW",  results$qc_flag), na.rm = TRUE)
-  n_unk <- sum(grepl("^UNKNOWN", results$qc_flag), na.rm = TRUE)
+  n_ok     <- sum(results$qc_flag == "OK",            na.rm = TRUE)
+  n_high_k <- sum(results$qc_flag == "REVIEW_high_K", na.rm = TRUE)
+  n_rev    <- sum(grepl("^REVIEW",  results$qc_flag), na.rm = TRUE)
+  n_unk    <- sum(grepl("^UNKNOWN", results$qc_flag), na.rm = TRUE)
   message(sprintf(
-    "calculate_infiltration complete: %d replicates (%d OK, %d REVIEW, %d UNKNOWN)",
-    nrow(results), n_ok, n_rev, n_unk))
+    "calculate_infiltration complete: %d replicates (%d OK, %d REVIEW [incl. %d REVIEW_high_K], %d UNKNOWN)",
+    nrow(results), n_ok, n_rev, n_high_k, n_unk))
   message("  -> ", out_csv)
   message("  -> ", png_path)
 

@@ -154,9 +154,10 @@ Fit quality is not a data-entry error — flags do not stop the script; every re
 
 | `qc_flag` | Meaning |
 |---|---|
-| `OK` | r² ≥ 0.95 and C1 > 0; K reported |
+| `OK` | r² ≥ 0.95 and C1 > 0 and K ≤ texture bound; K reported |
 | `REVIEW_negative_C1` | C1 ≤ 0 (unphysical); K = NA |
 | `REVIEW_low_r2` | r² < MIN_FIT_R2 (0.95); K reported, scientist reviews |
+| `REVIEW_high_K` | K > K_UPPER_CM_HR bound for texture (physically possible but unusually high); K reported, check field notes |
 | `UNKNOWN_insufficient_points` | n < MIN_FIT_POINTS (5) or fit failed; K = NA |
 | `UNKNOWN_no_texture_mapping` | SoilType abbreviation not in subplot_soiltexture.csv; K = NA |
 
@@ -169,7 +170,7 @@ The fit-quality flags in `R/calculate_infiltration.R` map to the shared vocabula
 | Shared label | `qc_flag` value |
 |---|---|
 | HIGH | `OK` |
-| MEDIUM | `REVIEW_low_r2` |
+| MEDIUM | `REVIEW_low_r2`, `REVIEW_high_K` |
 | LOW | `REVIEW_negative_C1` |
 | UNKNOWN | `UNKNOWN_insufficient_points`, `UNKNOWN_no_texture_mapping` |
 

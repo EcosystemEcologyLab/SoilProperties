@@ -63,3 +63,24 @@ MIN_FIT_POINTS <- 5L
 #   Default:  0.95; below this the replicate is flagged REVIEW_low_r2
 #   Ratified by Lindsey Bell 2026-06-04 for B2 soils
 MIN_FIT_R2 <- 0.95
+
+# ── Per-texture K upper bounds (soft QC thresholds) ────────────────────────────
+# K_UPPER_CM_HR: soft upper bounds for saturated hydraulic conductivity per USDA
+# texture class, in cm/hr. Source: METER MiniDisk manual Table 2 and standard
+# soil hydraulic literature (Rawls et al.; Carsel & Parrish 1988).
+# These are NOT hard validity cutoffs — a K above the bound triggers
+# REVIEW_high_K so the scientist can check field notes, but K is still reported.
+K_UPPER_CM_HR <- c(
+  "Sand"             = 500,
+  "Loamy Sand"       = 150,
+  "Sandy Loam"       = 50,
+  "Loam"             = 6,
+  "Silt"             = 6,
+  "Silt Loam"        = 6,
+  "Sandy Clay Loam"  = 4,
+  "Clay Loam"        = 3,
+  "Silty Clay Loam"  = 2,
+  "Sandy Clay"       = 2,
+  "Silty Clay"       = 1,
+  "Clay"             = 1
+)
