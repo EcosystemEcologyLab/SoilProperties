@@ -4,16 +4,14 @@
 #   - violations produce stop() with an informative message
 #   - clean data passes through invisibly
 #   - the fixture file (Soil_Infiltration_FieldData_20260528.xlsx) triggers
-#     the known structural violation (Sheet1 missing SoilMoisture_12cm)
+#     the known structural violation (Sheet1 missing SoilType, Group, and
+#     SoilMoisture_12cm; Sheet2 missing SoilType and Group)
 #
 # helper-root.R sets the working directory to PROJECT_ROOT and exposes
 # PROJECT_ROOT. We source the infiltration config and cleaning functions here
 # (not in the helper) to keep the infiltration and moisture test namespaces
 # cleanly separated.
 
-# Pin working directory to the project root so that relative source() calls
-# inside pipeline scripts (e.g. source("scripts/soilmoisture_config.R")) work
-# even though testthat::test_file() resets the directory to tests/testthat/.
 setwd(PROJECT_ROOT)
 
 source(file.path(PROJECT_ROOT, "R", "soilinfiltration_config.R"))
@@ -27,24 +25,24 @@ VALID_DATE <- as.Date("2026-06-01")   # in-season, correct year
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 # Returns a single-row data frame that passes all row-level validations.
-valid_row <- function(Site = "B2", Subplot = "PSAM", SuctionRate = 2,
+valid_row <- function(SoilType = "PSAM", Group = "1", SuctionRate = 2,
                       Time = 0, Volume = 90, SoilMoisture_12cm = 8.5) {
-  data.frame(Site = Site, Subplot = Subplot, SuctionRate = SuctionRate,
+  data.frame(SoilType = SoilType, Group = Group, SuctionRate = SuctionRate,
              Time = Time, Volume = Volume, SoilMoisture_12cm = SoilMoisture_12cm,
              stringsAsFactors = FALSE)
 }
 
 # Returns a tidy replicate (6 rows, t=0 anchor, monotonic time/volume,
 # constant suction) that passes all replicate-level checks.
-valid_replicate <- function(site = "B2", subplot = "PSAM", suction = 2) {
+valid_replicate <- function(soiltype = "PSAM", group = "1", suction = 2) {
   data.frame(
-    Site             = site,
-    Subplot          = subplot,
-    SuctionRate      = suction,
-    Time             = c(0,  30,  60,  90, 120, 150),
-    Volume           = c(90, 86,  82,  79,  76,  73),
+    SoilType          = soiltype,
+    Group             = group,
+    SuctionRate       = suction,
+    Time              = c(0,  30,  60,  90, 120, 150),
+    Volume            = c(90, 86,  82,  79,  76,  73),
     SoilMoisture_12cm = 8.5,
-    stringsAsFactors = FALSE
+    stringsAsFactors  = FALSE
   )
 }
 
@@ -88,8 +86,8 @@ test_that("detect_sheet_mismatches returns zero rows for identical sheets", {
 })
 
 test_that("detect_sheet_mismatches classifies whitespace mismatch and quotes values", {
-  s1 <- valid_row(Subplot = "PSAM ")   # trailing space
-  s2 <- valid_row(Subplot = "PSAM")
+  s1 <- valid_row(SoilType = "PSAM ")   # trailing space
+  s2 <- valid_row(SoilType = "PSAM")
   result <- detect_sheet_mismatches(s1, s2)
   expect_equal(nrow(result), 1)
   expect_equal(result$mismatch_type, "whitespace")
@@ -97,8 +95,8 @@ test_that("detect_sheet_mismatches classifies whitespace mismatch and quotes val
 })
 
 test_that("detect_sheet_mismatches classifies case mismatch", {
-  s1 <- valid_row(Site = "b2")
-  s2 <- valid_row(Site = "B2")
+  s1 <- valid_row(SoilType = "psam")
+  s2 <- valid_row(SoilType = "PSAM")
   result <- detect_sheet_mismatches(s1, s2)
   expect_equal(nrow(result), 1)
   expect_equal(result$mismatch_type, "case")
@@ -179,19 +177,19 @@ test_that("detect_row_violations passes a fully valid row", {
   expect_equal(nrow(detect_row_violations(valid_row())), 0)
 })
 
-test_that("detect_row_violations catches missing Site (NA)", {
-  v <- detect_row_violations(valid_row(Site = NA))
-  expect_true(any(grepl("Site.*missing", v$rule)))
+test_that("detect_row_violations catches missing SoilType (NA)", {
+  v <- detect_row_violations(valid_row(SoilType = NA))
+  expect_true(any(grepl("SoilType.*missing", v$rule)))
 })
 
-test_that("detect_row_violations catches missing Subplot (blank string)", {
-  v <- detect_row_violations(valid_row(Subplot = ""))
-  expect_true(any(grepl("Subplot.*missing", v$rule)))
+test_that("detect_row_violations catches missing Group (blank string)", {
+  v <- detect_row_violations(valid_row(Group = ""))
+  expect_true(any(grepl("Group.*missing", v$rule)))
 })
 
-test_that("detect_row_violations catches invalid Subplot", {
-  v <- detect_row_violations(valid_row(Subplot = "XXXX"))
-  expect_true(any(grepl("Subplot.*must be one of", v$rule)))
+test_that("detect_row_violations catches invalid SoilType", {
+  v <- detect_row_violations(valid_row(SoilType = "XXXX"))
+  expect_true(any(grepl("SoilType.*must be one of", v$rule)))
 })
 
 test_that("detect_row_violations catches missing SuctionRate", {
@@ -245,7 +243,7 @@ test_that("detect_row_violations: SoilMoisture_12cm with garbage values produces
 })
 
 test_that("detect_row_violations reports all violations in a row, not just the first", {
-  bad <- valid_row(Subplot = "XXXX", SuctionRate = 99, Volume = -5)
+  bad <- valid_row(SoilType = "XXXX", SuctionRate = 99, Volume = -5)
   v   <- detect_row_violations(bad)
   expect_gte(nrow(v), 3L)
   expect_true(all(v$row == 1L))
@@ -299,8 +297,8 @@ test_that("detect_replicate_violations catches inconsistent SuctionRate within r
 })
 
 test_that("detect_replicate_violations handles two replicates independently", {
-  r1 <- valid_replicate(subplot = "PSAM")
-  r2 <- valid_replicate(subplot = "THCL")
+  r1 <- valid_replicate(soiltype = "PSAM")
+  r2 <- valid_replicate(soiltype = "THCL")
   r2$Time <- c(10, 30, 60, 90, 120, 150)   # r2 missing t=0
   combined <- rbind(r1, r2)
   v <- detect_replicate_violations(combined)
@@ -324,7 +322,7 @@ test_that("validate_rows stops on date violation", {
 
 test_that("validate_rows stops and emits message on row violation", {
   d <- valid_replicate()
-  d$Subplot[2] <- "XXXX"
+  d$SoilType[2] <- "XXXX"
   # message() is called before stop(), so expect_message captures it;
   # the stop() propagates as an error which expect_error catches separately.
   expect_message(
@@ -345,11 +343,11 @@ test_that("validate_rows stops and emits message on replicate violation", {
 })
 
 test_that("validate_rows short-circuits: replicate checks not run when row violations exist", {
-  # Both a row violation (bad Subplot) and a replicate violation (no t=0)
+  # Both a row violation (bad SoilType) and a replicate violation (no t=0)
   # are present. Only the row violation message should appear.
   d <- valid_replicate()
-  d$Subplot  <- "XXXX"
-  d$Time <- c(10, 30, 60, 90, 120, 150)   # also missing t=0
+  d$SoilType <- "XXXX"
+  d$Time     <- c(10, 30, 60, 90, 120, 150)   # also missing t=0
   err <- tryCatch(validate_rows(d, VALID_DATE), error = function(e) e$message)
   expect_true(grepl("validation violation", err))
   expect_false(grepl("replicate", err))
@@ -367,7 +365,7 @@ test_that("check_duplicate_date returns FALSE when date is not in master", {
   tmp <- tempfile(fileext = ".csv")
   on.exit(unlink(tmp))
   utils::write.csv(
-    data.frame(Date = "2026-06-01", Site = "B2", Subplot = "PSAM",
+    data.frame(Date = "2026-06-01", SoilType = "PSAM", Group = "1",
                SuctionRate = 2, Time = 0, Volume = 90, SoilMoisture_12cm = 8.5),
     tmp, row.names = FALSE
   )
@@ -378,7 +376,7 @@ test_that("check_duplicate_date returns TRUE when date exists and user says Y", 
   tmp <- tempfile(fileext = ".csv")
   on.exit(unlink(tmp))
   utils::write.csv(
-    data.frame(Date = format(VALID_DATE), Site = "B2", Subplot = "PSAM",
+    data.frame(Date = format(VALID_DATE), SoilType = "PSAM", Group = "1",
                SuctionRate = 2, Time = 0, Volume = 90, SoilMoisture_12cm = 8.5),
     tmp, row.names = FALSE
   )
@@ -389,7 +387,7 @@ test_that("check_duplicate_date stops when date exists and user says N", {
   tmp <- tempfile(fileext = ".csv")
   on.exit(unlink(tmp))
   utils::write.csv(
-    data.frame(Date = format(VALID_DATE), Site = "B2", Subplot = "PSAM",
+    data.frame(Date = format(VALID_DATE), SoilType = "PSAM", Group = "1",
                SuctionRate = 2, Time = 0, Volume = 90, SoilMoisture_12cm = 8.5),
     tmp, row.names = FALSE
   )
@@ -404,7 +402,7 @@ test_that("check_duplicate_date stops when date exists and user says N", {
 test_that("append_to_master creates master CSV if it does not exist", {
   tmp <- tempfile(fileext = ".csv")
   on.exit(unlink(tmp))
-  append_to_master(valid_replicate(), VALID_DATE, tmp)
+  append_to_master(valid_replicate(), VALID_DATE, "test.xlsx", tmp)
   result <- utils::read.csv(tmp, stringsAsFactors = FALSE)
   expect_equal(nrow(result), nrow(valid_replicate()))
   expect_equal(result$Date[1], format(VALID_DATE))
@@ -413,8 +411,8 @@ test_that("append_to_master creates master CSV if it does not exist", {
 test_that("append_to_master appends new date without touching existing rows", {
   tmp <- tempfile(fileext = ".csv")
   on.exit(unlink(tmp))
-  append_to_master(valid_replicate(), as.Date("2026-06-01"), tmp)
-  append_to_master(valid_replicate(), as.Date("2026-06-02"), tmp)
+  append_to_master(valid_replicate(), as.Date("2026-06-01"), "test.xlsx", tmp)
+  append_to_master(valid_replicate(), as.Date("2026-06-02"), "test.xlsx", tmp)
   result <- utils::read.csv(tmp, stringsAsFactors = FALSE)
   expect_equal(nrow(result), 2 * nrow(valid_replicate()))
   expect_equal(sort(unique(result$Date)), c("2026-06-01", "2026-06-02"))
@@ -425,10 +423,10 @@ test_that("append_to_master with replace=TRUE removes old rows for that date onl
   on.exit(unlink(tmp))
   r1 <- valid_replicate(); r1$Volume <- 80
   r2 <- valid_replicate(); r2$Volume <- 70
-  append_to_master(r1, as.Date("2026-06-01"), tmp)
-  append_to_master(r2, as.Date("2026-06-02"), tmp)
+  append_to_master(r1, as.Date("2026-06-01"), "test.xlsx", tmp)
+  append_to_master(r2, as.Date("2026-06-02"), "test.xlsx", tmp)
   r3 <- valid_replicate(); r3$Volume <- 99
-  append_to_master(r3, as.Date("2026-06-01"), tmp, replace = TRUE)
+  append_to_master(r3, as.Date("2026-06-01"), "test.xlsx", tmp, replace = TRUE)
   result <- utils::read.csv(tmp, stringsAsFactors = FALSE)
   expect_equal(nrow(result), 2 * nrow(valid_replicate()))
   expect_equal(result$Volume[result$Date == "2026-06-01"][1], 99)
@@ -436,10 +434,17 @@ test_that("append_to_master with replace=TRUE removes old rows for that date onl
 })
 
 # ── Fixture-based tests ────────────────────────────────────────────────────────
-# Soil_Infiltration_FieldData_20260528.xlsx has known issues:
-#   STRUCTURAL: Sheet1 is missing SoilMoisture_12cm (omitted by mistake).
-#     read_entry_sheets() stops at Sheet1 before reaching the comparison step.
-#   VALUE TYPOS in Sheet2 vs Sheet1 (visible once Sheet1 is corrected):
+# Soil_Infiltration_FieldData_20260528.xlsx has the OLD column layout and known
+# structural issues:
+#   Sheet1 columns: Site, Subplot, SuctionRate, Time, Volume
+#     → missing SoilType, Group, SoilMoisture_12cm (all three required)
+#   Sheet2 columns: Site, Subplot, SuctionRate, Time, Volume, SoilMoisture_12cm
+#     → missing SoilType and Group
+#
+#   read_entry_sheets() stops at Sheet1 before reaching the comparison step.
+#
+#   VALUE TYPOS in Sheet2 vs Sheet1 (visible once the column issue is bypassed
+#   by comparing on the original common columns):
 #     Row 61 — Subplot:     TCAM (S1)  vs PCAM (S2)
 #     Row  7 — SuctionRate: 2    (S1)  vs 3    (S2)
 #     Row 15 — SuctionRate: 2    (S1)  vs 10   (S2)
@@ -447,7 +452,7 @@ test_that("append_to_master with replace=TRUE removes old rows for that date onl
 #     Row 13 — Volume:      61   (S1)  vs 96   (S2)
 #     Row 63 — Volume:      62.5 (S1)  vs 69   (S2)
 
-test_that("Fixture 20260528: read_entry_sheets stops — Sheet1 missing SoilMoisture_12cm", {
+test_that("Fixture 20260528: read_entry_sheets stops — Sheet1 missing expected columns", {
   skip_if_not(file.exists(FIXTURE), "fixture not present")
   expect_error(
     read_entry_sheets(FIXTURE),
@@ -455,7 +460,7 @@ test_that("Fixture 20260528: read_entry_sheets stops — Sheet1 missing SoilMois
   )
 })
 
-test_that("Fixture 20260528: Sheet2 has 6 expected columns including SoilMoisture_12cm", {
+test_that("Fixture 20260528: Sheet2 has SoilMoisture_12cm in the raw file", {
   skip_if_not(file.exists(FIXTURE), "fixture not present")
   df <- openxlsx::read.xlsx(FIXTURE, sheet = 2)
   expect_true("SoilMoisture_12cm" %in% names(df))
