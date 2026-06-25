@@ -4,7 +4,7 @@
 
 # ── Step 0: Filename parsing ───────────────────────────────────────────────────
 
-#' Parse the field date from a daily entry filename
+#' Parse the field date from a daily entry filename.
 #'
 #' @param filename Character. Bare filename or full path, e.g.
 #'   \code{"Soil_Infiltration_FieldData_20260601.xlsx"}.
@@ -27,23 +27,23 @@ parse_date_from_filename <- function(filename) {
 
 # ── Step 1: Sheet reading and double-entry comparison ─────────────────────────
 
-#' Read Sheet1 and Sheet2 from a daily entry workbook
+#' Read Sheet1 and Sheet2 from a daily entry workbook.
 #'
-#' Both sheets must have columns: Site, Subplot, SuctionRate, Time, Volume,
-#' SoilMoisture_12cm. SoilMoisture_12cm is a reference measurement recorded
-#' alongside the infiltration run — it is read through to the master CSV but
-#' receives no range checks or monotonicity checks in this pipeline.
+#' Both sheets must have columns: SoilType, SuctionRate, Time, Volume,
+#' SoilMoisture_12cm, Group. SoilMoisture_12cm is a reference measurement
+#' recorded at the start of each run — it is carried through to the master CSV
+#' unchanged and receives no range checks here.
 #'
 #' @param filepath Character. Full path to the .xlsx file.
 #' @return Named list with elements \code{sheet1} and \code{sheet2}, each a
-#'   data frame with columns Site, Subplot, SuctionRate, Time, Volume,
-#'   SoilMoisture_12cm.
+#'   data frame with columns SoilType, SuctionRate, Time, Volume,
+#'   SoilMoisture_12cm, Group.
 read_entry_sheets <- function(filepath) {
   if (!file.exists(filepath)) {
     stop("File not found: ", filepath)
   }
-  expected_cols <- c("Site", "Subplot", "SuctionRate", "Time", "Volume",
-                     "SoilMoisture_12cm")
+  expected_cols <- c("SoilType", "SuctionRate", "Time", "Volume",
+                     "SoilMoisture_12cm", "Group")
 
   read_one <- function(sheet_num, label) {
     df <- tryCatch(
@@ -65,13 +65,11 @@ read_entry_sheets <- function(filepath) {
   )
 }
 
-#' Detect cell-level mismatches between Sheet1 and Sheet2
+#' Detect cell-level mismatches between Sheet1 and Sheet2.
 #'
 #' Compares values as-entered (no normalisation). Classifies each mismatch so
-#' that invisible differences (trailing spaces, case) are immediately apparent
-#' to the user. Values are quoted in the output so whitespace is visible.
-#' SoilMoisture_12cm is included in the comparison — a transcription error in
-#' a reference column should still be caught at double-entry.
+#' that invisible differences (trailing spaces, case) are immediately apparent.
+#' Values are quoted in the output so whitespace is visible.
 #'
 #' @param sheet1 Data frame from Sheet1.
 #' @param sheet2 Data frame from Sheet2. Must have the same columns as sheet1.
@@ -103,7 +101,7 @@ detect_sheet_mismatches <- function(sheet1, sheet2) {
       rows[[length(rows) + 1]] <- data.frame(
         row           = i,
         column        = col,
-        sheet1_value  = paste0('"', r1, '"'),  # quotes expose trailing spaces
+        sheet1_value  = paste0('"', r1, '"'),
         sheet2_value  = paste0('"', r2, '"'),
         mismatch_type = mtype,
         stringsAsFactors = FALSE
@@ -122,7 +120,10 @@ detect_sheet_mismatches <- function(sheet1, sheet2) {
   do.call(rbind, rows)
 }
 
-#' Compare Sheet1 and Sheet2, stopping loudly on any mismatch
+#' Compare Sheet1 and Sheet2, stopping loudly on any mismatch.
+#'
+#' All three mismatch types (value, whitespace, case) cause a stop — the
+#' mismatch_type column tells the scientist which kind of fix is needed.
 #'
 #' @param sheet1 Data frame from Sheet1.
 #' @param sheet2 Data frame from Sheet2.
@@ -152,7 +153,7 @@ compare_sheets <- function(sheet1, sheet2) {
 
 # ── Step 2: Range and code validation ─────────────────────────────────────────
 
-#' Validate the date parsed from the filename
+#' Validate the date parsed from the filename.
 #'
 #' @param date A \code{Date} object.
 #' @return Character vector of violation messages. Empty means the date is valid.
@@ -172,19 +173,16 @@ validate_date <- function(date) {
   violations
 }
 
-#' Detect per-row validation violations
+#' Detect per-row validation violations.
 #'
-#' Every rule is checked for every row; all failures for a row are collected
-#' before moving on. A blank or NA cell is UNKNOWN, not zero — reported as
-#' missing. Whitespace is stripped for the categorical lookups only.
+#' Every rule is checked for every row; all failures are collected before
+#' stopping. A blank or NA cell is missing — never silently treated as zero.
 #'
 #' SoilMoisture_12cm receives NO checks — it is a reference measurement
-#' (soil moisture at the time of the infiltration run) that is carried through
-#' to the master CSV unchanged. Range or device-specific limits for that sensor
-#' are managed by the soil moisture pipeline.
+#' (soil moisture at the time of the run) carried through unchanged.
 #'
-#' @param data Data frame with columns Site, Subplot, SuctionRate, Time,
-#'   Volume, SoilMoisture_12cm.
+#' @param data Data frame with columns SoilType, SuctionRate, Time, Volume,
+#'   SoilMoisture_12cm, Group.
 #' @return Data frame with columns \code{row}, \code{rule}, \code{observed_value}.
 #'   Zero rows means all rows pass.
 detect_row_violations <- function(data) {
@@ -202,29 +200,29 @@ detect_row_violations <- function(data) {
   is_blank <- function(x) is.na(x) || trimws(as.character(x)) == ""
 
   for (i in seq_len(nrow(data))) {
-    site     <- data$Site[i]
-    subplot  <- data$Subplot[i]
+    soiltype <- data$SoilType[i]
+    group    <- data$Group[i]
     suction  <- data$SuctionRate[i]
     time_val <- data$Time[i]
     volume   <- data$Volume[i]
     # SoilMoisture_12cm: no checks (reference column only)
 
     # ── Missing / blank ──────────────────────────────────────────────────────
-    if (is_blank(site))     add(i, "Site: missing (blank/NA)",        site)
-    if (is_blank(subplot))  add(i, "Subplot: missing (blank/NA)",     subplot)
+    if (is_blank(soiltype)) add(i, "SoilType: missing (blank/NA)", soiltype)
+    if (is_blank(group))    add(i, "Group: missing (blank/NA)",    group)
     if (is_blank(suction))  add(i, "SuctionRate: missing (blank/NA)", suction)
     if (is_blank(time_val)) add(i, "Time: missing (blank/NA)",        time_val)
     if (is_blank(volume))   add(i, "Volume: missing (blank/NA)",      volume)
 
-    subplot_present <- !is_blank(subplot)
-    suction_present <- !is_blank(suction)
-    time_present    <- !is_blank(time_val)
-    volume_present  <- !is_blank(volume)
+    soiltype_present <- !is_blank(soiltype)
+    suction_present  <- !is_blank(suction)
+    time_present     <- !is_blank(time_val)
+    volume_present   <- !is_blank(volume)
 
-    # ── Subplot ───────────────────────────────────────────────────────────────
-    if (subplot_present && !trimws(subplot) %in% VALID_SUBPLOTS) {
-      add(i, paste0("Subplot: must be one of {",
-                    paste(VALID_SUBPLOTS, collapse = ", "), "}"), subplot)
+    # ── SoilType ──────────────────────────────────────────────────────────────
+    if (soiltype_present && !trimws(soiltype) %in% VALID_SOIL_TYPES) {
+      add(i, paste0("SoilType: must be one of {",
+                    paste(VALID_SOIL_TYPES, collapse = ", "), "}"), soiltype)
     }
 
     # ── SuctionRate ───────────────────────────────────────────────────────────
@@ -272,24 +270,22 @@ detect_row_violations <- function(data) {
   do.call(rbind, violations)
 }
 
-#' Detect replicate-level validation violations
+#' Detect replicate-level validation violations.
 #'
-#' Replicates are groups of rows sharing the same Site and Subplot. Checks:
+#' Replicates are groups of rows sharing the same SoilType and Group. Checks:
 #' \enumerate{
 #'   \item Each replicate must have exactly one row with Time == 0 (the V0 anchor).
 #'   \item Within a replicate, Time must be strictly increasing in row order.
 #'   \item Within a replicate, Volume must be non-increasing within
 #'     \code{VOL_MONOTONIC_TOLERANCE_ML}.
-#'   \item All rows in a replicate must share the same SuctionRate (suction is
-#'     a fixed setting for the entire measurement run).
+#'   \item All rows in a replicate must share the same SuctionRate.
 #' }
 #'
-#' Row-level violations (missing/non-numeric values) must be resolved first —
-#' \code{validate_rows()} short-circuits: if \code{detect_row_violations()} finds
-#' anything, this function is not called. See \code{validate_rows()}.
+#' Row-level violations must be resolved first — if \code{detect_row_violations()}
+#' finds anything, this function is not called (missing values would crash grouping).
 #'
-#' @param data Data frame with columns Site, Subplot, SuctionRate, Time, Volume
-#'   (all present and parseable — row-level checks already passed).
+#' @param data Data frame with columns SoilType, Group, SuctionRate, Time,
+#'   Volume (all present and parseable).
 #' @return Data frame with columns \code{row}, \code{rule}, \code{observed_value}.
 #'   Zero rows means all replicates pass.
 detect_replicate_violations <- function(data) {
@@ -308,12 +304,12 @@ detect_replicate_violations <- function(data) {
   data$Volume <- as.numeric(data$Volume)
 
   rep_groups <- split(seq_len(nrow(data)),
-                      paste(data$Site, data$Subplot, sep = "\t"))
+                      paste(data$SoilType, data$Group, sep = "\t"))
 
   for (idx in rep_groups) {
-    d    <- data[idx, , drop = FALSE]
-    site <- d$Site[1]; subplot <- d$Subplot[1]
-    label <- paste0("(Site=", site, ", Subplot=", subplot, ")")
+    d        <- data[idx, , drop = FALSE]
+    soiltype <- d$SoilType[1]; group <- d$Group[1]
+    label    <- paste0("(SoilType=", soiltype, ", Group=", group, ")")
 
     # ── t=0 anchor ────────────────────────────────────────────────────────────
     n_t0 <- sum(d$Time == 0, na.rm = TRUE)
@@ -333,7 +329,7 @@ detect_replicate_violations <- function(data) {
         add(idx[k + 1],
             paste0("non-monotonic Time within ", label),
             paste0(d$Time[k + 1], " <= previous ", d$Time[k]))
-        break   # report only the first offending row per replicate
+        break
       }
     }
 
@@ -367,14 +363,13 @@ detect_replicate_violations <- function(data) {
   do.call(rbind, violations)
 }
 
-#' Validate date and all rows, stopping loudly on any violation
+#' Validate date and all rows, stopping loudly on any violation.
 #'
 #' Per-row checks run first; if any row-level violation exists, replicate checks
-#' are skipped. This short-circuit prevents grouping errors (e.g. a missing
-#' Subplot would crash the replicate grouping in detect_replicate_violations()).
+#' are skipped (missing/non-numeric values would crash the grouping logic).
 #'
-#' @param data Data frame with columns Site, Subplot, SuctionRate, Time, Volume,
-#'   SoilMoisture_12cm.
+#' @param data Data frame with columns SoilType, SuctionRate, Time, Volume,
+#'   SoilMoisture_12cm, Group.
 #' @param date A \code{Date} object from the filename.
 #' @return Invisible \code{data} when all checks pass.
 validate_rows <- function(data, date) {
@@ -411,7 +406,7 @@ validate_rows <- function(data, date) {
 
 # ── Step 3: Append to master ───────────────────────────────────────────────────
 
-#' Check for an existing date in the master CSV and confirm replacement
+#' Check for an existing date in the master CSV and confirm replacement.
 #'
 #' @param master_csv_path Character. Path to \code{B2_SoilInfiltration_FullData.csv}.
 #' @param date A \code{Date} object.
@@ -444,25 +439,27 @@ check_duplicate_date <- function(master_csv_path, date, confirm_fn = readline) {
   TRUE
 }
 
-#' Append validated rows to the master CSV
+#' Append validated rows to the master CSV.
 #'
-#' @param data Data frame with columns Site, Subplot, SuctionRate, Time, Volume,
-#'   SoilMoisture_12cm.
+#' @param data Data frame with columns SoilType, SuctionRate, Time, Volume,
+#'   SoilMoisture_12cm, Group.
 #' @param date A \code{Date} object.
+#' @param filename Character. The source .xlsx file path (basename stored for provenance).
 #' @param master_csv_path Character. Path to the master CSV.
 #' @param replace Logical. If \code{TRUE}, removes any existing rows for this
 #'   date before appending.
-#' @return Invisible data frame of the appended rows (with Date column prepended).
-append_to_master <- function(data, date, master_csv_path, replace = FALSE) {
+#' @return Invisible data frame of the appended rows (with Date and File columns prepended).
+append_to_master <- function(data, date, filename, master_csv_path, replace = FALSE) {
   new_rows <- data.frame(
-    Date             = format(date),
-    Site             = data$Site,
-    Subplot          = data$Subplot,
-    SuctionRate      = data$SuctionRate,
-    Time             = data$Time,
-    Volume           = data$Volume,
+    Date              = format(date),
+    File              = basename(filename),
+    SoilType          = data$SoilType,
+    SuctionRate       = data$SuctionRate,
+    Time              = data$Time,
+    Volume            = data$Volume,
     SoilMoisture_12cm = data$SoilMoisture_12cm,
-    stringsAsFactors = FALSE
+    Group             = data$Group,
+    stringsAsFactors  = FALSE
   )
 
   if (file.exists(master_csv_path)) {
@@ -477,7 +474,7 @@ append_to_master <- function(data, date, master_csv_path, replace = FALSE) {
   invisible(new_rows)
 }
 
-#' Write one row to the append log (creates the log if it does not exist)
+#' Write one row to the append log (creates the log if it does not exist).
 #'
 #' @param append_log_path Character. Path to \code{outputs/infiltration_append_log.csv}.
 #' @param filename Character. The daily entry filename just processed.

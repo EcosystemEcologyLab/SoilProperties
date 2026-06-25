@@ -53,16 +53,15 @@ The following directories are gitignored and must never be committed:
 - `data/extracted/` — intermediate extractions
 - `data/processed/` — pipeline-generated CSVs and the FullData xlsx
 - `outputs/` — exclusion logs, unknown logs, session_info.txt
-- `figures/` — PDF curve plots
+- `figures/` — PNG curve plots
 
 The following directories are git-tracked:
-- `data/reference/` — vg_parameters.csv, infiltrometer_radii.csv (source of truth for math constants)
-- `data/reference/` — vg_parameters.csv, infiltrometer_radii.csv, subplot_soiltexture.csv (Subplot→USDA texture lookup; confirmed by Lindsey Bell 2026-06-04)
+- `data/reference/` — vg_parameters.csv, infiltrometer_radii.csv, subplot_soiltexture.csv (SoilType abbreviation→USDA texture lookup; confirmed by Lindsey Bell 2026-06-04)
 
 ### 4. Pipeline hard rules
 - Entry pipeline is **stop-loudly**: print violations table, `stop()`, scientist fixes source `.xlsx` and re-runs. Nothing is silently dropped or flagged-and-continued.
 - All scientifically meaningful thresholds live in `R/soilinfiltration_config.R` as documented named constants — never as magic numbers inline in scripts.
-- `SoilTexture` is never entered in the field sheet — it is derived automatically from `Subplot` via `data/reference/subplot_soiltexture.csv`.
+- `SoilTexture` (USDA class) is never entered in the field sheet — it is derived automatically from the `SoilType` abbreviation (PSAM, TCAM, etc.) via `data/reference/subplot_soiltexture.csv`.
 
 ---
 
@@ -82,10 +81,10 @@ The following directories are git-tracked:
 2. Enter data into both sheets of a new `.xlsx` file using the template at
    `output_template/Soil_Infiltration_FieldData_template.xlsx`.
    File must be named `Soil_Infiltration_FieldData_YYYYMMDD.xlsx`.
-3. `source("R/clean_soilinfiltration.R")` — prompts for the filename, then:
+3. `source("R/clean_soilinfiltration.R")` — prompts for the file path, then:
    - Step 1: compares Sheet1 and Sheet2 cell-by-cell; `stop()` on any mismatch
    - Step 2: validates date, per-row rules, and replicate rules; `stop()` on any violation
-   - Step 3: appends Sheet1 rows (with Date prepended) to `data/B2_SoilInfiltration_FullData.csv`
+   - Step 3: appends Sheet1 rows (with Date and File prepended) to `data/B2_SoilInfiltration_FullData.csv`
              and writes one row to `outputs/infiltration_append_log.csv`
 4. Commit the updated `data/B2_SoilInfiltration_FullData.csv` to a branch and open a PR.
 
@@ -95,13 +94,14 @@ The following directories are git-tracked:
 Rscript R/calculate_infiltration.R
 ```
 
-Reads `data/B2_SoilInfiltration_FullData.csv`, derives SoilTexture from Subplot
-(via `data/reference/subplot_soiltexture.csv`), fits I = C1√t + C2t per replicate
-(grouped by Date + Site + Subplot), computes K via Zhang (1997) / van Genuchten.
+Reads `data/B2_SoilInfiltration_FullData.csv`, derives USDA SoilTexture from
+the `SoilType` abbreviation (via `data/reference/subplot_soiltexture.csv`), fits
+I = C1√t + C2t per replicate (grouped by Date + SoilType + Group), computes K
+via Zhang (1997) / van Genuchten.
 
 Writes:
 - `data/processed/B2_SoilInfiltration_Results.csv` — one row per replicate
-- `figures/B2_SoilInfiltration_curves_<YYYYMMDD>.pdf` — one panel per replicate
+- `figures/B2_SoilInfiltration_curves_<YYYYMMDD>.png` — one panel per replicate (x-axis = √t)
 
 ---
 
@@ -135,15 +135,15 @@ Writes:
 - Any mismatch: print table → `stop()`.
 
 **Step 2 — per-row rules** (`detect_row_violations`); all rows checked before stopping:
-- Site: missing → violation
-- Subplot: missing → violation; not in VALID_SUBPLOTS → violation
+- SoilType: missing → violation; not in VALID_SOIL_TYPES → violation
+- Group: missing → violation
 - SuctionRate: missing → violation; not numeric → violation; not in VALID_SUCTIONS_CM → violation
 - Time: missing → violation; negative → violation; > TIME_MAX_S (21 600 s) → violation
 - Volume: missing → violation; negative → violation; > MAX_VOLUME_ML (95 mL) → violation
 - SoilMoisture_12cm: **no checks** (reference measurement, carried through unchanged)
 
 **Step 2 — replicate rules** (`detect_replicate_violations`; only if per-row passes):
-- Per (Site, Subplot) group: exactly one t=0 anchor; Time strictly increasing; Volume
+- Per (SoilType, Group): exactly one t=0 anchor; Time strictly increasing; Volume
   non-increasing within VOL_MONOTONIC_TOLERANCE_ML (1 mL); SuctionRate constant.
 
 All thresholds are declared as documented named constants in `R/soilinfiltration_config.R`.
@@ -155,10 +155,10 @@ Fit quality is not a data-entry error — flags do not stop the script; every re
 | `qc_flag` | Meaning |
 |---|---|
 | `OK` | r² ≥ 0.95 and C1 > 0; K reported |
-| `REVIEW_low_r2` | r² < MIN_FIT_R2 (0.95); K reported, scientist reviews |
 | `REVIEW_negative_C1` | C1 ≤ 0 (unphysical); K = NA |
-| `UNKNOWN_insufficient_points` | n < MIN_FIT_POINTS (5); K = NA |
-| `UNKNOWN_no_texture_lookup` | Subplot not found in subplot_soiltexture.csv; K = NA |
+| `REVIEW_low_r2` | r² < MIN_FIT_R2 (0.95); K reported, scientist reviews |
+| `UNKNOWN_insufficient_points` | n < MIN_FIT_POINTS (5) or fit failed; K = NA |
+| `UNKNOWN_no_texture_mapping` | SoilType abbreviation not in subplot_soiltexture.csv; K = NA |
 
 ---
 
@@ -171,7 +171,7 @@ The fit-quality flags in `R/calculate_infiltration.R` map to the shared vocabula
 | HIGH | `OK` |
 | MEDIUM | `REVIEW_low_r2` |
 | LOW | `REVIEW_negative_C1` |
-| UNKNOWN | `UNKNOWN_insufficient_points`, `UNKNOWN_no_texture_lookup` |
+| UNKNOWN | `UNKNOWN_insufficient_points`, `UNKNOWN_no_texture_mapping` |
 
 Entry-pipeline violations (`clean_soilinfiltration.R`) carry no confidence label — they stop the script before any data reaches the compute stage.
 
