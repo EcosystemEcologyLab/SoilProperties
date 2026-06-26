@@ -1,6 +1,6 @@
 subplot,soil_texture
 PSAM,sand
 THSL,sandy loam
-TCAM,loam
+TCAM,sandy loam
 THCL,clay loam
-TCAL,loam
+TCAL,sandy loam

@@ -11,7 +11,7 @@
 # .env is gitignored and never committed.
 .drive <- Sys.getenv("INFILTRATION_DATA_DRIVE", unset = "X:")
 DAILY_DATA_DIR <- file.path(.drive, "moore", "2026_B2_SoilProp", "Data",
-                            "Infiltration", "Soil_Infiltration_FieldData_Raw")
+                            "Infiltration", "Soil_Infiltration_FieldData")
 rm(.drive)
 
 # ── Output paths ───────────────────────────────────────────────────────────────
