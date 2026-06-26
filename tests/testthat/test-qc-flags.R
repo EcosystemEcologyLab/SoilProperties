@@ -21,12 +21,14 @@ local({
                          soil_texture = "loam",
                          stringsAsFactors = FALSE)
 
-# Build a synthetic replicate data frame: I = C1*sqrt(t) + C2*t exactly, so
+# Build a synthetic replicate data frame: I = C2*sqrt(t) + C1*t exactly, so
 # the fit returns r² ≈ 1 and C1 > 0.
+# C1 is the t-coefficient (METER convention; used for K = C1/A).
+# C2 is the sqrt(t) sorptivity coefficient.
 .make_rep <- function(C1, C2 = 0.001, soiltype = "TCAM",
                        suction = 2, n = 8) {
   t   <- seq(0, by = 60, length.out = n)
-  I   <- C1 * sqrt(t) + C2 * t
+  I   <- C2 * sqrt(t) + C1 * t
   vol <- 80 - I * pi * RADIUS_CM^2
   data.frame(
     Date              = "2026-01-01",
@@ -44,8 +46,8 @@ local({
 # ── REVIEW_high_K ──────────────────────────────────────────────────────────────
 
 test_that("REVIEW_high_K: valid fit with K above loam bound gets REVIEW_high_K, not OK", {
-  # C1 = 0.1 cm/sqrt(s) gives K ~ 57 cm/hr for loam (bound = 6 cm/hr).
-  d   <- .make_rep(C1 = 0.1, C2 = 0.001)
+  # C1 = 0.011 cm/s (t-coefficient) gives K ≈ 6.3 cm/hr for loam (bound = 6 cm/hr).
+  d   <- .make_rep(C1 = 0.011, C2 = 0.001)
   res <- .calc_replicate(d, .fake_vg, .fake_tex)
 
   expect_equal(res$qc_flag, "REVIEW_high_K")

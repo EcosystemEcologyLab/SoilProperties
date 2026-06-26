@@ -11,10 +11,12 @@
 # helper-root.R sources infiltration_math.R and sets the working directory.
 
 test_that("fit_infiltration recovers known C1, C2 from exact synthetic data", {
-  # Construct I = 0.05*sqrt(t) + 0.002*t exactly
-  C1_true <- 0.05; C2_true <- 0.002
+  # C1 is the coefficient for t (linear/steady-state term, METER convention).
+  # C2 is the coefficient for sqrt(t) (sorptivity term).
+  # Construct I = C2_true*sqrt(t) + C1_true*t exactly.
+  C1_true <- 0.002; C2_true <- 0.05
   t <- c(0, 30, 60, 90, 120, 180, 240, 300)
-  I <- C1_true * sqrt(t) + C2_true * t
+  I <- C2_true * sqrt(t) + C1_true * t
 
   fit <- fit_infiltration(t, I)
   expect_equal(fit$C1, C1_true, tolerance = 1e-9)

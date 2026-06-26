@@ -35,11 +35,19 @@ A_coefficient <- function(alpha, n, r, h0) {
   (11.65 * (n^0.1 - 1) * exp(cc * (n - 1.9) * alpha * h0)) / ((alpha * r)^0.91)
 }
 
-#' Fit cumulative infiltration to I = C1*sqrt(t) + C2*t with no intercept.
+#' Fit cumulative infiltration to I = C2*sqrt(t) + C1*t with no intercept.
 #'
-#' Matches LINEST(Infilt, sqrtTime^{1,2}, FALSE) in the METER sheet, i.e.
-#' lm(I ~ 0 + sqrt_t + t). The reported r-squared is the uncentered R^2 that
-#' R returns for a no-intercept model, matching the METER LINEST output.
+#' Matches LINEST(Infilt, sqrtTime^{1,2}, FALSE) in the METER sheet. Fits a
+#' quadratic polynomial in sqrt(t) space with no intercept:
+#'   I ~ 0 + sqrt_t + I(sqrt_t^2)
+#' where sqrt_t^2 == t. LINEST returns coefficients highest-power first, so
+#' the METER sheet assigns the coefficient for t to its "C1" cell and the
+#' coefficient for sqrt(t) to its "C2" cell. This function follows that
+#' convention: C1 is the linear-in-t term (units cm/s, used directly in
+#' K = C1/A), and C2 is the sqrt(t) sorptivity term (units cm/s^0.5).
+#'
+#' The reported r-squared is the uncentered R^2 that R returns for a
+#' no-intercept model, matching the METER LINEST output.
 #'
 #' @param time_s Numeric vector of times (s).
 #' @param I Numeric vector of cumulative infiltration (cm), same length.
@@ -53,12 +61,11 @@ fit_infiltration <- function(time_s, I) {
   if (n_points < 2) return(na_out)
 
   sqrt_t <- sqrt(time_s)
-  t <- time_s
-  fit <- tryCatch(stats::lm(I ~ 0 + sqrt_t + t), error = function(e) NULL)
+  fit <- tryCatch(stats::lm(I ~ 0 + sqrt_t + I(sqrt_t^2)), error = function(e) NULL)
   if (is.null(fit)) return(na_out)
 
   co <- stats::coef(fit)
-  C1 <- unname(co["sqrt_t"]); C2 <- unname(co["t"])
+  C1 <- unname(co["I(sqrt_t^2)"]); C2 <- unname(co["sqrt_t"])
   r2 <- suppressWarnings(summary(fit)$r.squared)
   if (is.null(r2) || length(r2) == 0) r2 <- NA_real_
   list(C1 = C1, C2 = C2, r2 = r2, n_points = n_points)
