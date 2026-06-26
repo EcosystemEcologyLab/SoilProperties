@@ -24,22 +24,33 @@ saturated hydraulic conductivity (K) via Zhang (1997) / van Genuchten.
    - `data/reference/subplot_soiltexture.csv` — SoilType abbreviation → USDA texture class
    - `data/reference/vg_parameters.csv` — van Genuchten α and n per texture class
    - `data/reference/infiltrometer_radii.csv` — MiniDisk disk radius
+4. **Network drive (Windows).** The pipeline reads field files directly from the
+   shared network drive (`X:\moore\2026_B2_SoilProp\Data\Infiltration\Soil_Infiltration_FieldData_Raw`
+   by default). If your drive is mapped to a letter other than `X:`, copy
+   `.env.example` to `.env` at the project root and set your letter there:
+   ```
+   INFILTRATION_DATA_DRIVE=Y:
+   ```
+   `.env` is gitignored — never commit it. Team members on macOS or a Codespace
+   will need the drive mounted (e.g. via `smb://`) or must contact a team member
+   for access instructions.
 
 ### Day-to-day workflow (four steps)
 
 1. **Open the project** — double-click `SoilProperties.Rproj` in RStudio.
-2. **Drop the field file into `data/raw/`** — the file must be named
+2. **Save the field file to the network drive** — the file must be named
    `Soil_Infiltration_FieldData_YYYYMMDD.xlsx` and filled in from the template
    at `output_template/Soil_Infiltration_FieldData_template.xlsx`.
    Both Sheet1 and Sheet2 must be completed (double-entry verification).
+   Place the file in the shared network folder (`DAILY_DATA_DIR` in
+   `R/soilinfiltration_config.R`).
 3. **Run the pipeline** — in the RStudio console:
    ```r
    source("R/run_infiltration_pipeline.R")
    ```
-   When prompted, enter the filename (e.g. `Soil_Infiltration_FieldData_20260611.xlsx`).
-   A bare filename is resolved to `data/raw/` automatically; a full or relative
-   path is also accepted. The script prints the resolved path before doing anything —
-   confirm it looks correct before proceeding.
+   When prompted, enter only the bare filename (e.g. `Soil_Infiltration_FieldData_20260611.xlsx`).
+   The script resolves it to the network drive automatically and prints the full
+   path before doing anything — confirm it looks correct before proceeding.
 4. **Follow the printed git commands** — on success the script prints the exact
    commands to create a branch, commit the updated master CSV and results CSV,
    push, and open a pull request for Lindsey to review before merging.

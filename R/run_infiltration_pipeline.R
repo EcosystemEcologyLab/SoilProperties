@@ -29,22 +29,24 @@ source("R/soilinfiltration_cleaning_functions.R")
 library(openxlsx)
 
 # ── Get file path ─────────────────────────────────────────────────────────────
-path_input <- trimws(readline(paste0(
-  "Enter .xlsx path (relative to project root, absolute, or bare filename",
-  " to look in data/raw/): "
-)))
-if (nchar(path_input) == 0) {
-  stop("No path entered. Re-run and provide a path.")
+if (!dir.exists(DAILY_DATA_DIR)) {
+  stop(
+    "Cannot find data directory: ", DAILY_DATA_DIR, "\n",
+    "If your network drive is mapped to a different letter, ",
+    "set INFILTRATION_DATA_DRIVE in a .env file at the project root.\n",
+    "See .env.example for instructions."
+  )
 }
 
-# Bare filename (no directory separator) → default to data/raw/
-filepath <- if (grepl("[/\\\\]", path_input) || file.exists(path_input)) {
-  path_input
-} else {
-  file.path("data", "raw", path_input)
+filename <- trimws(readline(
+  "Enter filename (e.g. Soil_Infiltration_FieldData_20260611.xlsx): "
+))
+if (nchar(filename) == 0) {
+  stop("No filename entered. Re-run and provide a filename.")
 }
 
-message("Resolved path: ", normalizePath(filepath, mustWork = FALSE))
+filepath <- file.path(DAILY_DATA_DIR, filename)
+message("Resolved path: ", filepath)
 
 # ── Parse date from filename ──────────────────────────────────────────────────
 date         <- parse_date_from_filename(filepath)
