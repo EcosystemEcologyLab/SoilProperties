@@ -2,6 +2,18 @@
 # All configurable constants for the soil infiltration pipeline.
 # Changing a threshold is a scientific decision — commit with a clear message.
 
+# ── Input paths ────────────────────────────────────────────────────────────────
+# DAILY_DATA_DIR: network drive folder containing daily entry .xlsx files.
+# Confirmed by Lindsey Bell 2026-06-04.
+# The drive letter is read from the INFILTRATION_DATA_DRIVE environment
+# variable (set in a local .env file — see .env.example). Defaults to X:
+# if not set. Each team member sets their own drive letter locally;
+# .env is gitignored and never committed.
+.drive <- Sys.getenv("INFILTRATION_DATA_DRIVE", unset = "X:")
+DAILY_DATA_DIR <- file.path(.drive, "moore", "2026_B2_SoilProp", "Data",
+                            "Infiltration", "Soil_Infiltration_FieldData_Raw")
+rm(.drive)
+
 # ── Output paths ───────────────────────────────────────────────────────────────
 # MASTER_CSV: git-tracked master data file, relative to project root.
 MASTER_CSV <- file.path("data", "B2_SoilInfiltration_FullData.csv")
