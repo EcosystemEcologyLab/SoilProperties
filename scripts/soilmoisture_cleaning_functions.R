@@ -49,7 +49,16 @@ read_entry_sheets <- function(filepath) {
     if (length(missing) > 0) {
       stop(label, " is missing expected column(s): ", paste(missing, collapse = ", "))
     }
-    df[, expected_cols]
+    df <- df[, expected_cols]
+    # Guard against leading-zero loss: if openxlsx coerced PlantID from a
+    # number-formatted cell (e.g. "0042" → 42), restore the 4-char zero-padded
+    # string. Text-formatted cells arrive as character and are left unchanged.
+    if (is.numeric(df$PlantID)) {
+      df$PlantID <- formatC(df$PlantID, width = 4, flag = "0", format = "d")
+    } else {
+      df$PlantID <- as.character(df$PlantID)
+    }
+    df
   }
 
   list(
@@ -310,7 +319,8 @@ validate_rows <- function(data, date) {
 check_duplicate_date <- function(master_csv_path, date, confirm_fn = readline) {
   if (!file.exists(master_csv_path)) return(FALSE)
 
-  master <- utils::read.csv(master_csv_path, stringsAsFactors = FALSE)
+  master <- utils::read.csv(master_csv_path, stringsAsFactors = FALSE,
+                             colClasses = c(PlantID = "character"))
   if (!"Date" %in% names(master)) return(FALSE)
 
   existing <- master[master$Date == format(date), ]
@@ -351,7 +361,8 @@ append_to_master <- function(data, date, master_csv_path, replace = FALSE) {
   )
 
   if (file.exists(master_csv_path)) {
-    master <- utils::read.csv(master_csv_path, stringsAsFactors = FALSE)
+    master <- utils::read.csv(master_csv_path, stringsAsFactors = FALSE,
+                              colClasses = c(PlantID = "character"))
     if (replace) master <- master[master$Date != format(date), ]
     combined <- rbind(master, new_rows)
   } else {

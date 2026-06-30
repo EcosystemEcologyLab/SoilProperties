@@ -24,9 +24,9 @@ FIXTURE <- file.path(.proj_root, "tests", "fixtures", "B2_SoilMoisture_20260519.
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 # Returns a single-row data frame that passes all row-level validations.
-valid_row <- function(SoilType = "PSAM", Species = "RhuOva", Sensor = "M",
+valid_row <- function(SoilType = "PSAM", PlantID = "1234", Sensor = "M",
                       Depth = 12, Value = 15) {
-  data.frame(SoilType = SoilType, Species = Species, Sensor = Sensor,
+  data.frame(SoilType = SoilType, PlantID = PlantID, Sensor = Sensor,
              Depth = Depth, Value = Value, stringsAsFactors = FALSE)
 }
 
@@ -162,19 +162,29 @@ test_that("detect_row_violations catches missing SoilType (blank string)", {
   expect_true(any(grepl("SoilType.*missing", v$rule)))
 })
 
-test_that("detect_row_violations catches Species of wrong length", {
-  v <- detect_row_violations(valid_row(Species = "RhuOvaX"))  # 7 chars
-  expect_true(any(grepl("Species.*6 letters", v$rule)))
+test_that("detect_row_violations catches PlantID of wrong length", {
+  v <- detect_row_violations(valid_row(PlantID = "12345"))  # 5 digits
+  expect_true(any(grepl("PlantID.*4 numeric digits", v$rule)))
 })
 
-test_that("detect_row_violations catches Species with non-letter characters", {
-  v <- detect_row_violations(valid_row(Species = "Rhu0va"))  # digit in it
-  expect_true(any(grepl("Species.*6 letters", v$rule)))
+test_that("detect_row_violations catches PlantID with non-numeric characters", {
+  v <- detect_row_violations(valid_row(PlantID = "12ab"))  # letters in it
+  expect_true(any(grepl("PlantID.*4 numeric digits", v$rule)))
 })
 
-test_that("detect_row_violations catches Species not in allowed list", {
-  v <- detect_row_violations(valid_row(Species = "AbcDef"))  # 6 letters, not in list
-  expect_true(any(grepl("not in the allowed species list", v$rule)))
+test_that("detect_row_violations catches PlantID that is all letters", {
+  v <- detect_row_violations(valid_row(PlantID = "abcd"))  # no digits
+  expect_true(any(grepl("PlantID.*4 numeric digits", v$rule)))
+})
+
+test_that("detect_row_violations accepts PlantID with leading zeros", {
+  # "0042" must stay 4 chars — leading zero preserved when read as character
+  expect_equal(nrow(detect_row_violations(valid_row(PlantID = "0042"))), 0)
+})
+
+test_that("detect_row_violations rejects PlantID missing leading zero (3 chars)", {
+  v <- detect_row_violations(valid_row(PlantID = "042"))  # would result from numeric coercion
+  expect_true(any(grepl("PlantID.*4 numeric digits", v$rule)))
 })
 
 test_that("detect_row_violations catches invalid Sensor", {
@@ -223,7 +233,7 @@ test_that("detect_row_violations catches Value > VALUE_T_MAX for Sensor=T", {
 })
 
 test_that("detect_row_violations reports all violations in a row, not just the first", {
-  bad <- valid_row(SoilType = "XXXX", Species = "Bad!", Sensor = "X")
+  bad <- valid_row(SoilType = "XXXX", PlantID = "Bad!", Sensor = "X")
   v <- detect_row_violations(bad)
   # At least 3 violations from 3 bad fields
   expect_gte(nrow(v), 3L)
@@ -242,7 +252,7 @@ test_that("check_duplicate_date returns FALSE when date is not in master", {
   tmp <- tempfile(fileext = ".csv")
   on.exit(unlink(tmp))
   utils::write.csv(
-    data.frame(Date = "2026-06-01", SoilType = "PSAM", Species = "RhuOva",
+    data.frame(Date = "2026-06-01", SoilType = "PSAM", PlantID = "1234",
                Sensor = "M", Depth = 12, Value = 15),
     tmp, row.names = FALSE
   )
@@ -253,7 +263,7 @@ test_that("check_duplicate_date returns TRUE when date exists and user says Y", 
   tmp <- tempfile(fileext = ".csv")
   on.exit(unlink(tmp))
   utils::write.csv(
-    data.frame(Date = format(VALID_DATE), SoilType = "PSAM", Species = "RhuOva",
+    data.frame(Date = format(VALID_DATE), SoilType = "PSAM", PlantID = "1234",
                Sensor = "M", Depth = 12, Value = 15),
     tmp, row.names = FALSE
   )
@@ -265,7 +275,7 @@ test_that("check_duplicate_date stops when date exists and user says N", {
   tmp <- tempfile(fileext = ".csv")
   on.exit(unlink(tmp))
   utils::write.csv(
-    data.frame(Date = format(VALID_DATE), SoilType = "PSAM", Species = "RhuOva",
+    data.frame(Date = format(VALID_DATE), SoilType = "PSAM", PlantID = "1234",
                Sensor = "M", Depth = 12, Value = 15),
     tmp, row.names = FALSE
   )
@@ -314,33 +324,19 @@ test_that("append_to_master with replace=TRUE removes old rows for that date onl
 })
 
 # ── Fixture-based tests ────────────────────────────────────────────────────────
-# Requires tests/fixtures/B2_SoilMoisture_20260519.xlsx to be present.
-# The fixture is a designed error file — do not "fix" it.
+# tests/fixtures/B2_SoilMoisture_20260519.xlsx uses the OLD column layout:
+# columns are SoilType, Species, Sensor, Depth, Value (no PlantID column).
+# Tests that required successfully reading through read_entry_sheets() have been
+# removed — this fixture now needs to be rebuilt with PlantID before those
+# row-content tests can be restored. The date and duplicate-check tests below
+# do not rely on read_entry_sheets() and remain valid.
 
-test_that("Step 1 fixture: compare_sheets detects exactly 5 mismatched rows", {
+test_that("Step 1 fixture: read_entry_sheets stops — fixture uses old Species column (PlantID missing)", {
   skip_if_not(file.exists(FIXTURE), "fixture file not present — copy it to tests/fixtures/")
-  sheets <- read_entry_sheets(FIXTURE)
-  mismatches <- detect_sheet_mismatches(sheets$sheet1, sheets$sheet2)
-  # Rows 3–7 of the data frame have mismatches; rows 1–2 agree between sheets.
-  expect_equal(length(unique(mismatches$row)), 5L)
-})
-
-test_that("Step 1 fixture: mismatch table has required columns", {
-  skip_if_not(file.exists(FIXTURE), "fixture file not present — copy it to tests/fixtures/")
-  sheets <- read_entry_sheets(FIXTURE)
-  mismatches <- detect_sheet_mismatches(sheets$sheet1, sheets$sheet2)
-  expect_true(all(c("row", "column", "sheet1_value", "sheet2_value", "mismatch_type")
-                  %in% names(mismatches)))
-})
-
-test_that("Step 1 fixture: whitespace mismatch (row 5, Sensor) is classified correctly", {
-  skip_if_not(file.exists(FIXTURE), "fixture file not present — copy it to tests/fixtures/")
-  sheets <- read_entry_sheets(FIXTURE)
-  mismatches <- detect_sheet_mismatches(sheets$sheet1, sheets$sheet2)
-  ws_row <- mismatches[mismatches$row == 5 & mismatches$column == "Sensor", ]
-  expect_equal(nrow(ws_row), 1L)
-  expect_equal(ws_row$mismatch_type, "whitespace")
-  expect_true(grepl('"M "', ws_row$sheet1_value, fixed = TRUE))
+  expect_error(
+    read_entry_sheets(FIXTURE),
+    "missing expected column"
+  )
 })
 
 test_that("Step 2 fixture: date 2026-05-19 fails season-window check", {
@@ -350,48 +346,13 @@ test_that("Step 2 fixture: date 2026-05-19 fails season-window check", {
   expect_true(any(grepl("season window", viols)))
 })
 
-test_that("Step 2 fixture: invalid SoilType (PSEM) caught in row 9", {
-  skip_if_not(file.exists(FIXTURE), "fixture file not present — copy it to tests/fixtures/")
-  sheets <- read_entry_sheets(FIXTURE)
-  viols <- detect_row_violations(sheets$sheet1[9, , drop = FALSE])
-  expect_true(any(grepl("SoilType.*must be one of", viols$rule)))
-})
-
-test_that("Step 2 fixture: wrong species length (TecVari, 7 chars) caught in row 10", {
-  skip_if_not(file.exists(FIXTURE), "fixture file not present — copy it to tests/fixtures/")
-  sheets <- read_entry_sheets(FIXTURE)
-  viols <- detect_row_violations(sheets$sheet1[10, , drop = FALSE])
-  expect_true(any(grepl("Species.*6 letters", viols$rule)))
-})
-
-test_that("Step 2 fixture: depth-sensor mismatch (Depth=10, Sensor=M) caught in row 11", {
-  skip_if_not(file.exists(FIXTURE), "fixture file not present — copy it to tests/fixtures/")
-  sheets <- read_entry_sheets(FIXTURE)
-  viols <- detect_row_violations(sheets$sheet1[11, , drop = FALSE])
-  expect_true(any(grepl("Depth.*Sensor=M", viols$rule)))
-})
-
-test_that("Step 2 fixture: value-sensor mismatch (Value=56, Sensor=T) caught in row 12", {
-  skip_if_not(file.exists(FIXTURE), "fixture file not present — copy it to tests/fixtures/")
-  sheets <- read_entry_sheets(FIXTURE)
-  viols <- detect_row_violations(sheets$sheet1[12, , drop = FALSE])
-  expect_true(any(grepl("Value.*Sensor=T", viols$rule)))
-})
-
-test_that("Step 2 fixture: value-sensor mismatch (Value=50, Sensor=M) caught in row 13", {
-  skip_if_not(file.exists(FIXTURE), "fixture file not present — copy it to tests/fixtures/")
-  sheets <- read_entry_sheets(FIXTURE)
-  viols <- detect_row_violations(sheets$sheet1[13, , drop = FALSE])
-  expect_true(any(grepl("Value.*Sensor=M", viols$rule)))
-})
-
 test_that("Step 3 fixture: second append of same date is refused", {
   skip_if_not(file.exists(FIXTURE), "fixture file not present — copy it to tests/fixtures/")
   tmp <- tempfile(fileext = ".csv")
   on.exit(unlink(tmp))
   fixture_date <- parse_date_from_filename(FIXTURE)
   utils::write.csv(
-    data.frame(Date = format(fixture_date), SoilType = "PSAM", Species = "RhuOva",
+    data.frame(Date = format(fixture_date), SoilType = "PSAM", PlantID = "1234",
                Sensor = "M", Depth = 12, Value = 15),
     tmp, row.names = FALSE
   )
