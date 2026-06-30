@@ -26,6 +26,11 @@ VALID_SOIL_TYPES <- c("PSAM", "THSL", "TCAM", "THCL", "TCAL")
 
 VALID_SENSORS <- c("T", "M")
 
+VALID_PLANTID_CODES <- c("2091", "2417", "2129", "0003", "2139", "2144", "2010",
+                         "2085", "2014", "2036", "2005", "2111", "2298", "2079",
+                         "2286", "2404", "2274", "0004", "0001", "2234", "2233", 
+                         "2393")
+
 # ── Depth rules (cm) ───────────────────────────────────────────────────────────
 # Moisture sensors (M) are installed at fixed depths; any other depth is a typo.
 DEPTH_M_VALID <- c(12L, 20L)
