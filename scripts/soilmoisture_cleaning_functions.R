@@ -225,13 +225,11 @@ detect_row_violations <- function(data) {
     # ── PlantID ───────────────────────────────────────────────────────────────
     if (PlantID_present) {
       sp <- trimws(as.character(PlantID))
-      if (nchar(sp) != 4 || !grepl("^[0-9]+$", sp))
+      if (nchar(sp) != 4 || !grepl("^[0-9]+$", sp)) {
         add(i, "PlantID: must be exactly 4 numbers", PlantID)
-      } else if (!sp %in% VALID_PLANTID_CODES) {
-        add(i, paste0("PlantID: '", sp, "' not in the allowed PlantID list"), PlantID)
       }
     }
-
+    
     # ── Sensor ────────────────────────────────────────────────────────────────
     if (sensor_present && !trimws(sensor) %in% VALID_SENSORS) {
       add(i, "Sensor: must be T or M", sensor)
