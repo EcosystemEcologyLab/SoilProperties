@@ -31,12 +31,12 @@ parse_date_from_filename <- function(filename) {
 #'
 #' @param filepath Character. Full path to the .xlsx file.
 #' @return Named list with elements \code{sheet1} and \code{sheet2}, each a
-#'   data frame with columns SoilType, Species, Sensor, Depth, Value.
+#'   data frame with columns SoilType, PlantID, Sensor, Depth, Value.
 read_entry_sheets <- function(filepath) {
   if (!file.exists(filepath)) {
     stop("File not found: ", filepath)
   }
-  expected_cols <- c("SoilType", "Species", "Sensor", "Depth", "Value")
+  expected_cols <- c("SoilType", "PlantID", "Sensor", "Depth", "Value")
 
   read_one <- function(sheet_num, label) {
     df <- tryCatch(
@@ -169,7 +169,7 @@ validate_date <- function(date) {
 #' before moving on. A blank or NA cell is UNKNOWN, not zero — reported as
 #' missing. Whitespace is stripped for the categorical lookups only.
 #'
-#' @param data Data frame with columns SoilType, Species, Sensor, Depth, Value.
+#' @param data Data frame with columns SoilType, PlantID, Sensor, Depth, Value.
 #' @return Data frame with columns \code{row}, \code{rule}, \code{observed_value}.
 #'   Zero rows means all rows pass.
 detect_row_violations <- function(data) {
@@ -188,7 +188,7 @@ detect_row_violations <- function(data) {
 
   for (i in seq_len(nrow(data))) {
     soil    <- data$SoilType[i]
-    species <- data$Species[i]
+    PlantID <- data$PlantID[i]
     sensor  <- data$Sensor[i]
     depth   <- data$Depth[i]
     value   <- data$Value[i]
@@ -196,13 +196,13 @@ detect_row_violations <- function(data) {
     # ── Missing / blank ──────────────────────────────────────────────────────
     # Blank is UNKNOWN — never silently zeroed or dropped.
     if (is_blank(soil))    add(i, "SoilType: missing (blank/NA)",  soil)
-    if (is_blank(species)) add(i, "Species: missing (blank/NA)",   species)
+    if (is_blank(PlantID)) add(i, "PlantID: missing (blank/NA)",   PlantID)
     if (is_blank(sensor))  add(i, "Sensor: missing (blank/NA)",    sensor)
     if (is_blank(depth))   add(i, "Depth: missing (blank/NA)",     depth)
     if (is_blank(value))   add(i, "Value: missing (blank/NA)",     value)
 
     soil_present    <- !is_blank(soil)
-    species_present <- !is_blank(species)
+    PlantID_present <- !is_blank(PlantID)
     sensor_present  <- !is_blank(sensor)
     depth_present   <- !is_blank(depth)
     value_present   <- !is_blank(value)
@@ -213,13 +213,13 @@ detect_row_violations <- function(data) {
                     paste(VALID_SOIL_TYPES, collapse = ", "), "}"), soil)
     }
 
-    # ── Species ───────────────────────────────────────────────────────────────
-    if (species_present) {
-      sp <- trimws(as.character(species))
-      if (nchar(sp) != 6 || !grepl("^[A-Za-z]+$", sp)) {
-        add(i, "Species: must be exactly 6 letters (A–Z, a–z only)", species)
-      } else if (!sp %in% VALID_SPECIES_CODES) {
-        add(i, paste0("Species: '", sp, "' not in the allowed species list"), species)
+    # ── PlantID ───────────────────────────────────────────────────────────────
+    if (PlantID_present) {
+      sp <- trimws(as.character(PlantID))
+      if (nchar(sp) != 4 || !grepl("^[0-9]+$", sp))
+        add(i, "PlantID: must be exactly 4 numbers", PlantID)
+      } else if (!sp %in% VALID_PLANTID_CODES) {
+        add(i, paste0("PlantID: '", sp, "' not in the allowed PlantID list"), PlantID)
       }
     }
 
@@ -271,7 +271,7 @@ detect_row_violations <- function(data) {
 
 #' Validate date and all rows, stopping loudly on any violation
 #'
-#' @param data Data frame with columns SoilType, Species, Sensor, Depth, Value.
+#' @param data Data frame with columns SoilType, PlantID, Sensor, Depth, Value.
 #' @param date A \code{Date} object from the filename.
 #' @return Invisible \code{data} when all rows pass.
 validate_rows <- function(data, date) {
@@ -333,7 +333,7 @@ check_duplicate_date <- function(master_csv_path, date, confirm_fn = readline) {
 
 #' Append validated rows to the master CSV
 #'
-#' @param data Data frame with columns SoilType, Species, Sensor, Depth, Value.
+#' @param data Data frame with columns SoilType, PlantID, Sensor, Depth, Value.
 #' @param date A \code{Date} object.
 #' @param master_csv_path Character. Path to the master CSV.
 #' @param replace Logical. If \code{TRUE}, removes any existing rows for this
@@ -343,7 +343,7 @@ append_to_master <- function(data, date, master_csv_path, replace = FALSE) {
   new_rows <- data.frame(
     Date     = format(date),
     SoilType = data$SoilType,
-    Species  = data$Species,
+    PlantID  = data$PlantID,
     Sensor   = data$Sensor,
     Depth    = data$Depth,
     Value    = data$Value,
