@@ -5,14 +5,28 @@
 # ── Input paths ────────────────────────────────────────────────────────────────
 # DAILY_DATA_DIR: network drive folder containing daily entry .xlsx files.
 # Confirmed by Lindsey Bell 2026-06-04.
-# The drive letter is read from the INFILTRATION_DATA_DRIVE environment
-# variable (set in a local .env file — see .env.example). Defaults to X:
-# if not set. Each team member sets their own drive letter locally;
-# .env is gitignored and never committed.
-.drive <- Sys.getenv("INFILTRATION_DATA_DRIVE", unset = "X:")
-DAILY_DATA_DIR <- file.path(.drive, "moore", "2026_B2_SoilProp", "Data",
-                            "Infiltration", "Soil_Infiltration_FieldData")
-rm(.drive)
+# Auto-resolved from known Windows (X:) and Mac (/Volumes/projects/...) defaults.
+# If neither is found, the user is prompted once per run to enter the path.
+.resolve_daily_data_dir <- function() {
+  win_default <- file.path("X:", "moore", "2026_B2_SoilProp", "Data",
+                           "Infiltration", "Soil_Infiltration_FieldData")
+  mac_default <- paste0("/Volumes/projects/moore/2026_B2_SoilProp/Data/",
+                        "Infiltration/Soil_Infiltration_FieldData")
+  if (dir.exists(win_default)) return(win_default)
+  if (dir.exists(mac_default)) return(mac_default)
+  cat(paste0(
+    "Could not find the infiltration data folder automatically.\n",
+    "On Windows, the folder is usually at ",
+    "X:\\moore\\2026_B2_SoilProp\\Data\\Infiltration\\Soil_Infiltration_FieldData\n",
+    "On Mac, it may be at /Volumes/projects/moore/... or similar.\n",
+    "Enter the full path to the daily data folder: "
+  ))
+  path <- trimws(readline())
+  if (!dir.exists(path)) stop("Directory not found: ", path, call. = FALSE)
+  path
+}
+DAILY_DATA_DIR <- .resolve_daily_data_dir()
+rm(.resolve_daily_data_dir)
 
 # ── Output paths ───────────────────────────────────────────────────────────────
 # MASTER_CSV: git-tracked master data file, relative to project root.

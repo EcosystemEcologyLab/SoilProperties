@@ -34,8 +34,25 @@ date <- trimws(readline(
 if (nchar(date) != 8 || !grepl("^[0-9]{8}$", date)) {
   stop("Date must be exactly 8 digits in YYYYMMDD format. Got: '", date, "'")
 }
+date_str <- format(as.Date(date, "%Y%m%d"), "%Y-%m-%d")
 
-base_path   <- "X:/moore/2026_B2_SoilProp/Data/ASD"
+.resolve_asd_base_path <- function() {
+  win_default <- file.path("X:", "moore", "2026_B2_SoilProp", "Data", "ASD")
+  mac_default <- "/Volumes/projects/moore/2026_B2_SoilProp/Data/ASD"
+  if (dir.exists(win_default)) return(win_default)
+  if (dir.exists(mac_default)) return(mac_default)
+  cat(paste0(
+    "Could not find the ASD data folder automatically.\n",
+    "On Windows, the folder is usually at X:\\moore\\2026_B2_SoilProp\\Data\\ASD\n",
+    "On Mac, it may be at /Volumes/projects/moore/... or similar.\n",
+    "Enter the full path to the ASD base data folder: "
+  ))
+  path <- trimws(readline())
+  if (!dir.exists(path)) stop("Directory not found: ", path, call. = FALSE)
+  path
+}
+base_path <- .resolve_asd_base_path()
+rm(.resolve_asd_base_path)
 
 reflectance_file <- file.path(base_path, "ProcessedReflectance",
                               paste0("ProcessedReflectance_", date, ".txt"))
@@ -373,10 +390,12 @@ log_msg("Done.")
 # --------------------------------------------------------------------------- #
 
 log_msg("Step 6: Git workflow — next steps")
-message("\n── Next steps: commit and open a pull request ───────────────────")
-message("Run these commands in a terminal:\n")
-message("  git checkout -b data/hyperspectral/", date)
-message("  git add \"", output_spectral, "\" \"", output_indices, "\"")
-message("  git commit -m \"[data] add hyperspectral ", date, "\"")
-message("  git push -u origin data/hyperspectral/", date)
-message("\nOpen a pull request on GitHub for Lindsey to review before merging.")
+cat(paste0(
+  "\n── Next steps: commit and open a pull request ───────────────────\n",
+  "Run these commands in your terminal:\n\n",
+  "  git checkout -b data/hyperspectral/", date, "\n",
+  "  git add \"", output_spectral, "\" \"", output_indices, "\"\n",
+  "  git commit -m \"[data] add hyperspectral ", date_str, "\"\n",
+  "  git push -u origin data/hyperspectral/", date, "\n\n",
+  "Open a pull request on GitHub for Lindsey to review before merging.\n"
+))
