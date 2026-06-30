@@ -26,13 +26,6 @@ VALID_SOIL_TYPES <- c("PSAM", "THSL", "TCAM", "THCL", "TCAL")
 
 VALID_SENSORS <- c("T", "M")
 
-VALID_SPECIES_CODES <- c(
-  "RhuOva", "IndSuf", "HetArb", "RueCal", "SalApi",
-  "GosDav", "BurHin", "LycBre", "BacSal", "AcaNot",
-  "EupMil", "DonVis", "TecSta", "HypEmo", "CyrEdu",
-  "MayPhy", "FouDig", "ParArg", "MexOrc", "UnkVeg"
-)
-
 # ── Depth rules (cm) ───────────────────────────────────────────────────────────
 # Moisture sensors (M) are installed at fixed depths; any other depth is a typo.
 DEPTH_M_VALID <- c(12L, 20L)

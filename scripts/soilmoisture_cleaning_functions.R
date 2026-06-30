@@ -36,7 +36,7 @@ read_entry_sheets <- function(filepath) {
   if (!file.exists(filepath)) {
     stop("File not found: ", filepath)
   }
-  expected_cols <- c("SoilType", "Species", "Sensor", "Depth", "Value")
+  expected_cols <- c("SoilType", "PlantID", "Sensor", "Depth", "Value")
 
   read_one <- function(sheet_num, label) {
     df <- tryCatch(
@@ -49,7 +49,16 @@ read_entry_sheets <- function(filepath) {
     if (length(missing) > 0) {
       stop(label, " is missing expected column(s): ", paste(missing, collapse = ", "))
     }
-    df[, expected_cols]
+    df <- df[, expected_cols]
+    # Guard against leading-zero loss: if openxlsx coerced PlantID from a
+    # number-formatted cell (e.g. "0042" → 42), restore the 4-char zero-padded
+    # string. Text-formatted cells arrive as character and are left unchanged.
+    if (is.numeric(df$PlantID)) {
+      df$PlantID <- formatC(df$PlantID, width = 4, flag = "0", format = "d")
+    } else {
+      df$PlantID <- as.character(df$PlantID)
+    }
+    df
   }
 
   list(
@@ -187,25 +196,25 @@ detect_row_violations <- function(data) {
   is_blank <- function(x) is.na(x) || trimws(as.character(x)) == ""
 
   for (i in seq_len(nrow(data))) {
-    soil    <- data$SoilType[i]
-    species <- data$Species[i]
-    sensor  <- data$Sensor[i]
-    depth   <- data$Depth[i]
-    value   <- data$Value[i]
+    soil     <- data$SoilType[i]
+    plant_id <- data$PlantID[i]
+    sensor   <- data$Sensor[i]
+    depth    <- data$Depth[i]
+    value    <- data$Value[i]
 
     # ── Missing / blank ──────────────────────────────────────────────────────
     # Blank is UNKNOWN — never silently zeroed or dropped.
-    if (is_blank(soil))    add(i, "SoilType: missing (blank/NA)",  soil)
-    if (is_blank(species)) add(i, "Species: missing (blank/NA)",   species)
-    if (is_blank(sensor))  add(i, "Sensor: missing (blank/NA)",    sensor)
-    if (is_blank(depth))   add(i, "Depth: missing (blank/NA)",     depth)
-    if (is_blank(value))   add(i, "Value: missing (blank/NA)",     value)
+    if (is_blank(soil))     add(i, "SoilType: missing (blank/NA)",  soil)
+    if (is_blank(plant_id)) add(i, "PlantID: missing (blank/NA)",   plant_id)
+    if (is_blank(sensor))   add(i, "Sensor: missing (blank/NA)",    sensor)
+    if (is_blank(depth))    add(i, "Depth: missing (blank/NA)",     depth)
+    if (is_blank(value))    add(i, "Value: missing (blank/NA)",     value)
 
-    soil_present    <- !is_blank(soil)
-    species_present <- !is_blank(species)
-    sensor_present  <- !is_blank(sensor)
-    depth_present   <- !is_blank(depth)
-    value_present   <- !is_blank(value)
+    soil_present     <- !is_blank(soil)
+    plant_id_present <- !is_blank(plant_id)
+    sensor_present   <- !is_blank(sensor)
+    depth_present    <- !is_blank(depth)
+    value_present    <- !is_blank(value)
 
     # ── SoilType ─────────────────────────────────────────────────────────────
     if (soil_present && !trimws(soil) %in% VALID_SOIL_TYPES) {
@@ -213,13 +222,12 @@ detect_row_violations <- function(data) {
                     paste(VALID_SOIL_TYPES, collapse = ", "), "}"), soil)
     }
 
-    # ── Species ───────────────────────────────────────────────────────────────
-    if (species_present) {
-      sp <- trimws(as.character(species))
-      if (nchar(sp) != 6 || !grepl("^[A-Za-z]+$", sp)) {
-        add(i, "Species: must be exactly 6 letters (A–Z, a–z only)", species)
-      } else if (!sp %in% VALID_SPECIES_CODES) {
-        add(i, paste0("Species: '", sp, "' not in the allowed species list"), species)
+    # ── PlantID ───────────────────────────────────────────────────────────────
+    # Stored as character to preserve leading zeros (e.g. "0042").
+    if (plant_id_present) {
+      pid <- trimws(as.character(plant_id))
+      if (nchar(pid) != 4 || !grepl("^[0-9]+$", pid)) {
+        add(i, "PlantID: must be exactly 4 numeric digits (e.g. 0042)", plant_id)
       }
     }
 
@@ -310,7 +318,8 @@ validate_rows <- function(data, date) {
 check_duplicate_date <- function(master_csv_path, date, confirm_fn = readline) {
   if (!file.exists(master_csv_path)) return(FALSE)
 
-  master <- utils::read.csv(master_csv_path, stringsAsFactors = FALSE)
+  master <- utils::read.csv(master_csv_path, stringsAsFactors = FALSE,
+                             colClasses = c(PlantID = "character"))
   if (!"Date" %in% names(master)) return(FALSE)
 
   existing <- master[master$Date == format(date), ]
@@ -343,7 +352,7 @@ append_to_master <- function(data, date, master_csv_path, replace = FALSE) {
   new_rows <- data.frame(
     Date     = format(date),
     SoilType = data$SoilType,
-    Species  = data$Species,
+    PlantID  = data$PlantID,
     Sensor   = data$Sensor,
     Depth    = data$Depth,
     Value    = data$Value,
@@ -351,7 +360,8 @@ append_to_master <- function(data, date, master_csv_path, replace = FALSE) {
   )
 
   if (file.exists(master_csv_path)) {
-    master <- utils::read.csv(master_csv_path, stringsAsFactors = FALSE)
+    master <- utils::read.csv(master_csv_path, stringsAsFactors = FALSE,
+                              colClasses = c(PlantID = "character"))
     if (replace) master <- master[master$Date != format(date), ]
     combined <- rbind(master, new_rows)
   } else {
