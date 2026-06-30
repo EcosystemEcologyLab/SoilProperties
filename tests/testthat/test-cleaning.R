@@ -14,8 +14,8 @@
 
 setwd(PROJECT_ROOT)
 
-source(file.path(PROJECT_ROOT, "R", "soilinfiltration_config.R"))
-source(file.path(PROJECT_ROOT, "R", "soilinfiltration_cleaning_functions.R"))
+source(file.path(PROJECT_ROOT, "scripts", "functions_config", "soilinfiltration_config.R"))
+source(file.path(PROJECT_ROOT, "scripts", "functions_config", "soilinfiltration_cleaning_functions.R"))
 
 FIXTURE <- file.path(PROJECT_ROOT, "tests", "fixtures",
                      "Soil_Infiltration_FieldData_20260528.xlsx")

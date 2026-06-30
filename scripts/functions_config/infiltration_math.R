@@ -3,7 +3,7 @@
 # METER calculation workbook; the workbook is the source of truth for the math
 # only — it is NOT a runtime dependency).
 #
-# Sourced by R/02_calculate_infiltration.R and by the testthat tests.
+# Sourced by calculate_infiltration.R and by the testthat tests.
 # Pure functions, base R only — no side effects, no global state.
 # =============================================================================
 

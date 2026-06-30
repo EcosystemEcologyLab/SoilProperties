@@ -14,7 +14,7 @@
 #
 # No formulas in the template — entry only.
 
-source("R/soilinfiltration_config.R")
+source("scripts/functions_config/soilinfiltration_config.R")
 library(openxlsx)
 
 OUT_PATH  <- file.path("output_template", "Soil_Infiltration_FieldData_template.xlsx")

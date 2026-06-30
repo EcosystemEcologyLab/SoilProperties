@@ -1,6 +1,6 @@
 # clean_soilinfiltration.R
 # Run from RStudio with SoilProperties.Rproj open (working dir = project root).
-# Call: source("R/clean_soilinfiltration.R")
+# Call: source("scripts/data_cleaning/clean_soilinfiltration.R")
 # Stops loudly at the first failing step; fix the source file and re-run.
 
 if (!interactive()) {
@@ -10,8 +10,8 @@ if (!interactive()) {
   )
 }
 
-source("R/soilinfiltration_config.R")
-source("R/soilinfiltration_cleaning_functions.R")
+source("scripts/functions_config/soilinfiltration_config.R")
+source("scripts/functions_config/soilinfiltration_cleaning_functions.R")
 
 library(openxlsx)
 
@@ -65,5 +65,5 @@ message(
 message(
   "\n── Step 4: Manual git workflow ────────────────────────────────────────",
   "\nCreate a branch, commit the updated CSV, push, and open a PR for review.",
-  "\nTo compute K from the updated master: Rscript R/calculate_infiltration.R"
+  "\nTo compute K from the updated master: Rscript scripts/data_cleaning/calculate_infiltration.R"
 )

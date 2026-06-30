@@ -1,7 +1,7 @@
 # run_infiltration_pipeline.R
 # One-stop runner for a new field day of soil infiltration data.
 # Run from RStudio with SoilProperties.Rproj open (working dir = project root).
-# Call: source("R/run_infiltration_pipeline.R")
+# Call: source("scripts/data_cleaning/run_infiltration_pipeline.R")
 #
 # Inputs:
 #   - A daily entry .xlsx (Soil_Infiltration_FieldData_YYYYMMDD.xlsx) in data/raw/
@@ -23,8 +23,8 @@ if (!interactive()) {
   )
 }
 
-source("R/soilinfiltration_config.R")
-source("R/soilinfiltration_cleaning_functions.R")
+source("scripts/functions_config/soilinfiltration_config.R")
+source("scripts/functions_config/soilinfiltration_cleaning_functions.R")
 
 library(openxlsx)
 
@@ -82,7 +82,7 @@ message(
 
 # ── Step 4: Compute K ────────────────────────────────────────────────────────
 message("\n── Step 4: Computing K (fitting infiltration curves) ────────────")
-source("R/calculate_infiltration.R")
+source("scripts/data_cleaning/calculate_infiltration.R")
 run_calculate_infiltration()
 
 # ── Git workflow ──────────────────────────────────────────────────────────────

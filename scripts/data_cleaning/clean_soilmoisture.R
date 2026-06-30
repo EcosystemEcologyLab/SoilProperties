@@ -1,6 +1,6 @@
 # clean_soilmoisture.R
 # Run from RStudio with SoilProperties.Rproj open (working dir = project root).
-# Open the project, then call: source("scripts/clean_soilmoisture.R")
+# Open the project, then call: source("scripts/data_cleaning/clean_soilmoisture.R")
 # Stops loudly at the first failing step; fix the source file and re-run.
 
 if (!interactive()) {
@@ -10,8 +10,8 @@ if (!interactive()) {
   )
 }
 
-source("scripts/soilmoisture_config.R")
-source("scripts/soilmoisture_cleaning_functions.R")
+source("scripts/functions_config/soilmoisture_config.R")
+source("scripts/functions_config/soilmoisture_cleaning_functions.R")
 
 library(openxlsx)
 library(dplyr)

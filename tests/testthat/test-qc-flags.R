@@ -7,7 +7,7 @@
 local({
   old <- setwd(PROJECT_ROOT)
   on.exit(setwd(old))
-  source(file.path(PROJECT_ROOT, "R", "calculate_infiltration.R"))
+  source(file.path(PROJECT_ROOT, "scripts", "data_cleaning", "calculate_infiltration.R"))
 })
 
 # ── Shared fixtures ────────────────────────────────────────────────────────────

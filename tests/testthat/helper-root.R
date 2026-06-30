@@ -15,4 +15,4 @@ PROJECT_ROOT <- .find_root()
 setwd(PROJECT_ROOT)
 
 # Shared math + config (sourced once; individual tests source scripts as needed).
-source(file.path(PROJECT_ROOT, "R", "infiltration_math.R"))
+source(file.path(PROJECT_ROOT, "scripts", "functions_config", "infiltration_math.R"))

@@ -60,7 +60,7 @@ The following directories are git-tracked:
 
 ### 4. Pipeline hard rules
 - Entry pipeline is **stop-loudly**: print violations table, `stop()`, scientist fixes source `.xlsx` and re-runs. Nothing is silently dropped or flagged-and-continued.
-- All scientifically meaningful thresholds live in `R/soilinfiltration_config.R` as documented named constants — never as magic numbers inline in scripts.
+- All scientifically meaningful thresholds live in `scripts/functions_config/soilinfiltration_config.R` as documented named constants — never as magic numbers inline in scripts.
 - `SoilTexture` (USDA class) is never entered in the field sheet — it is derived automatically from the `SoilType` abbreviation (PSAM, TCAM, etc.) via `data/reference/subplot_soiltexture.csv`.
 
 ---
@@ -81,7 +81,7 @@ The following directories are git-tracked:
 2. Enter data into both sheets of a new `.xlsx` file using the template at
    `output_template/Soil_Infiltration_FieldData_template.xlsx`.
    File must be named `Soil_Infiltration_FieldData_YYYYMMDD.xlsx`.
-3. `source("R/clean_soilinfiltration.R")` — prompts for the file path, then:
+3. `source("scripts/data_cleaning/clean_soilinfiltration.R")` — prompts for the file path, then:
    - Step 1: compares Sheet1 and Sheet2 cell-by-cell; `stop()` on any mismatch
    - Step 2: validates date, per-row rules, and replicate rules; `stop()` on any violation
    - Step 3: appends Sheet1 rows (with Date and File prepended) to `data/B2_SoilInfiltration_FullData.csv`
@@ -91,8 +91,16 @@ The following directories are git-tracked:
 ### Compute pipeline (batch, run from terminal)
 
 ```
-Rscript R/calculate_infiltration.R
+Rscript scripts/data_cleaning/calculate_infiltration.R
 ```
+
+### ASD hyperspectral pipeline (standalone)
+
+`scripts/data_cleaning/process_asd.R` — processes ASD Field Spec 3 reflectance
+data (reads `ProcessedReflectance_YYYYMMDD.txt` + `SpectralID_YYYYMMDD.csv`,
+calculates 19 Barnes et al. 2017 spectral indices, appends to
+`SpectralIndices_FullData.csv`). Configure paths at the top of the file before
+each run. Not part of the infiltration or soil moisture pipelines.
 
 Reads `data/B2_SoilInfiltration_FullData.csv`, derives USDA SoilTexture from
 the `SoilType` abbreviation (via `data/reference/subplot_soiltexture.csv`), fits
@@ -127,7 +135,7 @@ Writes:
 
 ## QC and Quality Standards
 
-### Entry pipeline — stop-loudly (`R/clean_soilinfiltration.R`)
+### Entry pipeline — stop-loudly (`scripts/data_cleaning/clean_soilinfiltration.R`)
 
 **Step 1 — double-entry comparison** (`detect_sheet_mismatches`):
 - Sheet1 and Sheet2 must have the same row count and identical values in every cell.
@@ -146,9 +154,9 @@ Writes:
 - Per (SoilType, Group): exactly one t=0 anchor; Time strictly increasing; Volume
   non-increasing within VOL_MONOTONIC_TOLERANCE_ML (1 mL); SuctionRate constant.
 
-All thresholds are declared as documented named constants in `R/soilinfiltration_config.R`.
+All thresholds are declared as documented named constants in `scripts/functions_config/soilinfiltration_config.R`.
 
-### Compute pipeline — quality flags (`R/calculate_infiltration.R`)
+### Compute pipeline — quality flags (`scripts/data_cleaning/calculate_infiltration.R`)
 
 Fit quality is not a data-entry error — flags do not stop the script; every replicate gets a row:
 
@@ -165,7 +173,7 @@ Fit quality is not a data-entry error — flags do not stop the script; every re
 
 ## Confidence and Quality Vocabulary
 
-The fit-quality flags in `R/calculate_infiltration.R` map to the shared vocabulary from SCIENCE_PRINCIPLES.md:
+The fit-quality flags in `scripts/data_cleaning/calculate_infiltration.R` map to the shared vocabulary from SCIENCE_PRINCIPLES.md:
 
 | Shared label | `qc_flag` value |
 |---|---|
@@ -202,7 +210,7 @@ field day provides the full append history via `git log`.
 
 There are **no exclusion or unknown logs** in the entry pipeline. The stop-loudly model means no data is silently dropped — violations stop the script and the scientist fixes the source file. There is nothing to log.
 
-The compute pipeline (`R/calculate_infiltration.R`) uses `qc_flag` values in the results CSV to flag replicates that could not yield a valid K (see QC and Quality Standards above). These are not "excluded" — they appear in the results with `K_cm_per_s = NA` and a descriptive `qc_flag`.
+The compute pipeline (`scripts/data_cleaning/calculate_infiltration.R`) uses `qc_flag` values in the results CSV to flag replicates that could not yield a valid K (see QC and Quality Standards above). These are not "excluded" — they appear in the results with `K_cm_per_s = NA` and a descriptive `qc_flag`.
 
 ---
 

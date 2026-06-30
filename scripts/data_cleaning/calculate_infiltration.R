@@ -2,7 +2,7 @@
 # Batch compute step — run after the master CSV has been updated by
 # clean_soilinfiltration.R.
 #
-# Usage: Rscript R/calculate_infiltration.R
+# Usage: Rscript scripts/data_cleaning/calculate_infiltration.R
 #
 # Reads data/B2_SoilInfiltration_FullData.csv, looks up van Genuchten alpha/n
 # via the SoilType -> USDA texture mapping in data/reference/subplot_soiltexture.csv
@@ -12,8 +12,8 @@
 #   data/processed/B2_SoilInfiltration_Results.csv   — one row per replicate
 #   figures/B2_SoilInfiltration_curves_<YYYYMMDD>.png — one panel per replicate
 
-source("R/soilinfiltration_config.R")
-source("R/infiltration_math.R")
+source("scripts/functions_config/soilinfiltration_config.R")
+source("scripts/functions_config/infiltration_math.R")
 
 suppressPackageStartupMessages({
   library(dplyr)

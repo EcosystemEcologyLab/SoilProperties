@@ -16,8 +16,8 @@ library(openxlsx)
 } else {
   ".."
 }
-source(file.path(.proj_root, "scripts", "soilmoisture_config.R"))
-source(file.path(.proj_root, "scripts", "soilmoisture_cleaning_functions.R"))
+source(file.path(.proj_root, "scripts", "functions_config", "soilmoisture_config.R"))
+source(file.path(.proj_root, "scripts", "functions_config", "soilmoisture_cleaning_functions.R"))
 
 FIXTURE <- file.path(.proj_root, "tests", "fixtures", "B2_SoilMoisture_20260519.xlsx")
 

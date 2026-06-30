@@ -1,8 +1,7 @@
 # Reference tables — provenance
 
 These two CSVs are **git-tracked** scientific reference data. They are read by
-`R/pipeline_config.R` (`check_pipeline_config()` validates their presence and
-columns) and by `R/02_calculate_infiltration.R`. Do not edit them without a
+`scripts/data_cleaning/calculate_infiltration.R`. Do not edit them without a
 commit message explaining the scientific reason for the change.
 
 ## `vg_parameters.csv`
@@ -30,5 +29,6 @@ Disk radius (cm) for each MiniDisk infiltrometer model.
 - **Source:** METER Group MiniDisk Infiltrometer documentation. The standard
   MiniDisk disk radius is 2.25 cm; the older "MiniDisk Version1" disk radius is
   1.6 cm.
-- The active radius for a pipeline run is selected in `R/pipeline_config.R` by
+- The active radius for a pipeline run is selected in
+  `scripts/functions_config/soilinfiltration_config.R` by
   `INFILTROMETER_TYPE` (default `"MiniDisk"`).
