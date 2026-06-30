@@ -7,6 +7,7 @@ on:
     paths:
       - 'data/*_FullData.csv'
       - 'data/processed/B2_SoilInfiltration_Results.csv'
+  workflow_dispatch:
 
 jobs:
   update:
