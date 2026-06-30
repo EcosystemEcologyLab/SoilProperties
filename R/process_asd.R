@@ -1,4 +1,3 @@
-#!/usr/bin/env Rscript
 #
 # process_asd.R — Process ASD Field Spec 3 hyperspectral data
 #
@@ -9,27 +8,56 @@
 #   Tab-delimited; first column = wavelengths (350–2500 nm); remaining columns =
 #   one reflectance series per leaf collection (wavelengths as rows, scans as cols).
 #
-# Run as: Rscript process_asd.R
+# Expected SpectralID CSV columns: ID#, Leaf#, Genus, PlantID#, Group
+#   PlantID# is the numeric plant identifier carried through as plantID.
+#   Genus is descriptive metadata only — not used as an identifier.
+#   Group is optional (e.g. full panel vs modified panel). If the column is
+#   present but entirely blank/NA for this run, it is dropped from grouping
+#   automatically — no manual config needed.
+#
+# Run from RStudio with the project open: source("process_asd.R")
+
+if (!interactive()) {
+  stop(
+    "This script must be run interactively from RStudio ",
+    "(source it, don't Rscript it)."
+  )
+}
 
 # ============================================================
 #  CONFIGURATION — edit these paths before each run
 # ============================================================
 
-date        <- "20261011"   # YYYYMMDD — change this each run
+date <- trimws(readline(
+  "Enter the date for this ASD run (YYYYMMDD, e.g. 20261011): "
+))
+if (nchar(date) != 8 || !grepl("^[0-9]{8}$", date)) {
+  stop("Date must be exactly 8 digits in YYYYMMDD format. Got: '", date, "'")
+}
 
 base_path   <- "X:/moore/2026_B2_SoilProp/Data/ASD"
 
 reflectance_file <- file.path(base_path, "ProcessedReflectance",
-                               paste0("ProcessedReflectance_", date, ".txt"))
+                              paste0("ProcessedReflectance_", date, ".txt"))
 spectral_id_file <- file.path(base_path, "SpectralID",
-                               paste0("SpectralID_", date, ".csv"))
+                              paste0("SpectralID_", date, ".csv"))
 output_spectral  <- file.path(base_path, "FullSpectralFieldData",
-                               "SpectralFieldData.csv")
+                              "SpectralFieldData.csv")
 output_indices   <- "X:/moore/2026_B2_SoilProp/Code/data/SpectralIndices_FullData.csv"
 
-plant_id_col <- "Genus"   # SpectralID column to use as plant identifier
-leaf_col     <- "Leaf#"   # SpectralID column to use as leaf number
-group_cols   <- NULL      # set to e.g. "Panel" if needed, otherwise leave NULL
+# plant_id_col: the SpectralID column used as the plant identifier in output.
+# PlantID# is the numeric ID (parallel to the 4-digit PlantID used in the
+# soil moisture / infiltration pipelines) — Genus is descriptive only and is
+# carried through as a separate metadata column, not used as an identifier.
+plant_id_col <- "PlantID#"
+genus_col    <- "Genus"
+leaf_col     <- "Leaf#"
+
+# group_col: optional treatment grouping (e.g. full panel vs modified panel).
+# Leave as "Group" to match the SpectralID schema. If this column is present
+# but blank/NA for every row in a given run, it is automatically dropped from
+# grouping below — no need to edit this per run.
+group_col <- "Group"
 
 # ============================================================
 
@@ -64,9 +92,9 @@ read_reflectance <- function(path) {
     path, header = TRUE, sep = "\t",
     check.names = FALSE, stringsAsFactors = FALSE
   )
-
+  
   wl <- suppressWarnings(as.numeric(raw[[1]]))
-
+  
   if (any(is.na(wl))) {
     stop(
       "Non-numeric values found in the first column of the reflectance file. ",
@@ -83,14 +111,14 @@ read_reflectance <- function(path) {
       call. = FALSE
     )
   }
-
+  
   refl_matrix <- as.matrix(raw[, -1, drop = FALSE])
   storage.mode(refl_matrix) <- "numeric"
-
+  
   # Transpose: rows become collections; assign wavelength-named column headers
   refl_t <- t(refl_matrix)
   colnames(refl_t) <- paste0("p", round(wl))
-
+  
   list(data = as.data.frame(refl_t), wl = wl)
 }
 
@@ -104,7 +132,7 @@ get_refl <- function(nm, wl_vec, refl_vec) {
 # for a single leaf collection defined by paired wl_vec / refl_vec vectors.
 calc_indices <- function(wl_vec, refl_vec) {
   p <- function(nm) get_refl(nm, wl_vec, refl_vec)
-
+  
   list(
     SR1              = p(750) / p(700),
     DoubleDifference = (p(749) - p(720)) - (p(701) - p(672)),
@@ -114,7 +142,7 @@ calc_indices <- function(wl_vec, refl_vec) {
     Maccioni         = (p(780) - p(710)) / (p(780) - p(680)),
     SR3              = p(750) / p(550),
     Gitelson         = 1 / p(700),
-    NDVI_MODIS       = (p(858) - p(648)) / (p(858) + p(648)),   # NIR=858, Red=648 (MODIS band centres)
+    NDVI_MODIS       = (p(858) - p(648)) / (p(858) + p(648)),
     Datt4            = p(672) / (p(550) * p(708)),
     SR4              = p(700) / p(670),
     SR2              = p(752) / p(690),
@@ -169,31 +197,57 @@ if (nrow(refl_df) != nrow(meta_df)) {
   ), call. = FALSE)
 }
 
-# Validate and rename config-specified columns to standard names used throughout
-missing_cols <- setdiff(c(plant_id_col, leaf_col), names(meta_df))
+# Validate required columns are present before renaming.
+# group_col is checked separately below since it's optional.
+required_cols <- c(plant_id_col, genus_col, leaf_col)
+missing_cols  <- setdiff(required_cols, names(meta_df))
 if (length(missing_cols) > 0) {
   stop(
-    "SpectralID CSV is missing column(s) specified in the config block: ",
+    "SpectralID CSV is missing required column(s): ",
     paste(missing_cols, collapse = ", "),
     call. = FALSE
   )
 }
 
-meta_df <- dplyr::rename(meta_df, plantID = !!plant_id_col, leafNumber = !!leaf_col)
+meta_df <- dplyr::rename(
+  meta_df,
+  plantID    = !!plant_id_col,
+  genus      = !!genus_col,
+  leafNumber = !!leaf_col
+)
 
-# Resolve extra grouping columns (group_cols may be NULL, a string, or a vector)
-extra_grp <- if (is.null(group_cols)) character(0) else as.character(group_cols)
-
-missing_grp <- setdiff(extra_grp, names(meta_df))
-if (length(missing_grp) > 0) {
-  stop(
-    "group_cols column(s) not found in SpectralID CSV: ",
-    paste(missing_grp, collapse = ", "),
+# PlantID# should be the numeric identifier — flag (not fail) if it doesn't
+# look numeric, since SpectralID is hand-entered field data.
+non_numeric_ids <- meta_df$plantID[is.na(suppressWarnings(as.numeric(meta_df$plantID)))]
+if (length(non_numeric_ids) > 0) {
+  warning(
+    sprintf(
+      "%d row(s) have a non-numeric PlantID#: %s. Carrying through as-entered.",
+      length(non_numeric_ids), paste(unique(non_numeric_ids), collapse = ", ")
+    ),
     call. = FALSE
   )
 }
 
-group_key_cols <- c("date", "plantID", extra_grp)
+# Group is optional. If the column exists but is entirely blank/NA for this
+# run, drop it from grouping automatically rather than requiring per-run
+# config edits.
+has_group_col <- group_col %in% names(meta_df)
+if (has_group_col) {
+  meta_df        <- dplyr::rename(meta_df, group = !!group_col)
+  group_has_data <- any(!is.na(meta_df$group) & trimws(as.character(meta_df$group)) != "")
+} else {
+  group_has_data <- FALSE
+}
+
+use_group <- has_group_col && group_has_data
+if (has_group_col && !group_has_data) {
+  log_msg("  Group column present but empty for this run — excluding from grouping")
+} else if (use_group) {
+  log_msg("  Group column has data — including in grouping")
+}
+
+group_key_cols <- c("date", "plantID", if (use_group) "group" else NULL)
 
 # Row-by-row join: date prepended, SpectralID columns, reflectance columns
 joined_df <- dplyr::bind_cols(
@@ -214,7 +268,8 @@ log_msg(sprintf("Step 2: Appending full spectral data to %s", output_spectral))
 wl_cols      <- grep("^p[0-9]+$", names(joined_df), value = TRUE)
 spectral_out <- dplyr::select(
   joined_df,
-  date, plantID, leafNumber,
+  date, plantID, genus, leafNumber,
+  dplyr::any_of("group"),
   dplyr::all_of(wl_cols)
 )
 
@@ -247,6 +302,7 @@ log_msg(sprintf("  Calculated 19 indices for %d collections", nrow(indices_df)))
 # --------------------------------------------------------------------------- #
 
 log_msg("Step 4: Summarising indices by plant and date")
+log_msg(sprintf("  Grouping by: %s", paste(group_key_cols, collapse = ", ")))
 
 index_names <- c(
   "SR1", "DoubleDifference", "Vogelmann1", "mSR705", "SRCarter",
@@ -279,12 +335,16 @@ log_msg(sprintf("Step 5: Appending spectral indices to %s", output_indices))
 
 if (file.exists(output_indices)) {
   existing <- readr::read_csv(output_indices, show_col_types = FALSE)
-
-  dups <- dplyr::semi_join(summary_df, existing, by = group_key_cols)
-
+  
+  # Only check duplicates against group_key_cols that exist in the existing
+  # file too — guards against schema drift if a past run didn't have 'group'.
+  dup_check_cols <- intersect(group_key_cols, names(existing))
+  
+  dups <- dplyr::semi_join(summary_df, existing, by = dup_check_cols)
+  
   if (nrow(dups) > 0) {
     dup_desc <- paste(
-      apply(dups[, group_key_cols, drop = FALSE], 1, function(r)
+      apply(dups[, dup_check_cols, drop = FALSE], 1, function(r)
         paste(names(r), r, sep = "=", collapse = "  ")),
       collapse = "\n  "
     )
@@ -295,7 +355,7 @@ if (file.exists(output_indices)) {
       ),
       call. = FALSE
     )
-    summary_df <- dplyr::anti_join(summary_df, existing, by = group_key_cols)
+    summary_df <- dplyr::anti_join(summary_df, existing, by = dup_check_cols)
   }
 }
 
@@ -307,3 +367,16 @@ if (nrow(summary_df) > 0) {
 }
 
 log_msg("Done.")
+
+# --------------------------------------------------------------------------- #
+#  Step 6 — Git workflow                                                      #
+# --------------------------------------------------------------------------- #
+
+log_msg("Step 6: Git workflow — next steps")
+message("\n── Next steps: commit and open a pull request ───────────────────")
+message("Run these commands in a terminal:\n")
+message("  git checkout -b data/hyperspectral/", date)
+message("  git add \"", output_spectral, "\" \"", output_indices, "\"")
+message("  git commit -m \"[data] add hyperspectral ", date, "\"")
+message("  git push -u origin data/hyperspectral/", date)
+message("\nOpen a pull request on GitHub for Lindsey to review before merging.")
