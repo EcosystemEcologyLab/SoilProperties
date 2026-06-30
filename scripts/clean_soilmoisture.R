@@ -56,8 +56,11 @@ message(
   " to ", MASTER_CSV, "."
 )
 
-# ── Step 4 reminder ─────────────────────────────────────────────────────
-message(
-  "\n── Step 4: Manual git workflow ─────────────────────────────────────",
-  "\nCreate a branch, commit the updated CSV, push, and open a PR for review."
-)
+# ── Step 4: Git workflow ─────────────────────────────────────────────────────
+message("\n── Next steps: commit and open a pull request ───────────────────")
+message("Run these commands in a terminal:\n")
+message("  git checkout -b data/soilmoisture/", date_compact)
+message("  git add data/B2_SoilMoisture_FullData.csv")
+message("  git commit -m \"[data] add soil moisture ", date_str, "\"")
+message("  git push -u origin data/soilmoisture/", date_compact)
+message("\nOpen a pull request on GitHub for Lindsey to review before merging.")
