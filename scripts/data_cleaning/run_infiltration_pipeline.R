@@ -29,15 +29,6 @@ source("scripts/functions_config/soilinfiltration_cleaning_functions.R")
 library(openxlsx)
 
 # ── Get file path ─────────────────────────────────────────────────────────────
-if (!dir.exists(DAILY_DATA_DIR)) {
-  stop(
-    "Cannot find data directory: ", DAILY_DATA_DIR, "\n",
-    "If your network drive is mapped to a different letter, ",
-    "set INFILTRATION_DATA_DRIVE in a .env file at the project root.\n",
-    "See .env.example for instructions."
-  )
-}
-
 filename <- trimws(readline(
   "Enter filename (e.g. Soil_Infiltration_FieldData_20260611.xlsx): "
 ))
@@ -86,10 +77,14 @@ source("scripts/data_cleaning/calculate_infiltration.R")
 run_calculate_infiltration()
 
 # ── Git workflow ──────────────────────────────────────────────────────────────
-message("\n── Next steps: commit and open a pull request ───────────────────")
-message("Run these commands in a terminal:\n")
-message("  git checkout -b data/infiltration/", date_compact)
-message("  git add data/B2_SoilInfiltration_FullData.csv data/processed/B2_SoilInfiltration_Results.csv figures/B2_SoilInfiltration_curves_", date_compact, ".png")
-message("  git commit -m \"[data] add infiltration ", date_str, "\"")
-message("  git push -u origin data/infiltration/", date_compact)
-message("\nOpen a pull request on GitHub for Lindsey to review before merging.")
+cat(paste0(
+  "\n── Next steps: commit and open a pull request ───────────────────\n",
+  "Run these commands in your terminal:\n\n",
+  "  git checkout -b data/infiltration/", date_compact, "\n",
+  "  git add data/B2_SoilInfiltration_FullData.csv",
+  " data/processed/B2_SoilInfiltration_Results.csv",
+  " figures/B2_SoilInfiltration_curves_", date_compact, ".png\n",
+  "  git commit -m \"[data] add infiltration ", date_str, "\"\n",
+  "  git push -u origin data/infiltration/", date_compact, "\n\n",
+  "Open a pull request on GitHub for Lindsey to review before merging.\n"
+))

@@ -4,9 +4,28 @@
 
 # ── External paths ─────────────────────────────────────────────────────────────
 # DAILY_DATA_DIR: network drive folder containing daily entry .xlsx files.
-#   Change the drive letter / path if the mapping differs on your machine.
-DAILY_DATA_DIR <- file.path("X:", "moore", "2026_B2_SoilProp", "Data",
-                            "SoilMoisture", "B2_SoilMoisture_DataSheet_DailyData")
+# Auto-resolved from known Windows (X:) and Mac (/Volumes/projects/...) defaults.
+# If neither is found, the user is prompted once per run to enter the path.
+.resolve_daily_data_dir <- function() {
+  win_default <- file.path("X:", "moore", "2026_B2_SoilProp", "Data",
+                           "SoilMoisture", "B2_SoilMoisture_DataSheet_DailyData")
+  mac_default <- paste0("/Volumes/projects/moore/2026_B2_SoilProp/Data/",
+                        "SoilMoisture/B2_SoilMoisture_DataSheet_DailyData")
+  if (dir.exists(win_default)) return(win_default)
+  if (dir.exists(mac_default)) return(mac_default)
+  cat(paste0(
+    "Could not find the soil moisture data folder automatically.\n",
+    "On Windows, the folder is usually at ",
+    "X:\\moore\\2026_B2_SoilProp\\Data\\SoilMoisture\\B2_SoilMoisture_DataSheet_DailyData\n",
+    "On Mac, it may be at /Volumes/projects/moore/... or similar.\n",
+    "Enter the full path to the daily data folder: "
+  ))
+  path <- trimws(readline())
+  if (!dir.exists(path)) stop("Directory not found: ", path, call. = FALSE)
+  path
+}
+DAILY_DATA_DIR <- .resolve_daily_data_dir()
+rm(.resolve_daily_data_dir)
 
 # MASTER_CSV: git-tracked master data file, relative to project root.
 MASTER_CSV  <- file.path("X:", "moore", "2026_B2_SoilProp",

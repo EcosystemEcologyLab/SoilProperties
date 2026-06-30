@@ -27,8 +27,10 @@ if (nchar(filename) == 0) {
 filepath <- file.path(DAILY_DATA_DIR, filename)
 
 # ── Parse date from filename ────────────────────────────────────────────
-date <- parse_date_from_filename(filename)
-message("\nProcessing: ", filename, "  (date: ", format(date), ")")
+date         <- parse_date_from_filename(filename)
+date_compact <- format(date, "%Y%m%d")
+date_str     <- format(date, "%Y-%m-%d")
+message("\nProcessing: ", filename, "  (date: ", date_str, ")")
 
 # ── Step 1: Compare double entries ──────────────────────────────────────
 message("\n── Step 1: Comparing Sheet1 and Sheet2 ────────────────────────")
@@ -57,10 +59,12 @@ message(
 )
 
 # ── Step 4: Git workflow ─────────────────────────────────────────────────────
-message("\n── Next steps: commit and open a pull request ───────────────────")
-message("Run these commands in a terminal:\n")
-message("  git checkout -b data/soilmoisture/", date_compact)
-message("  git add data/B2_SoilMoisture_FullData.csv")
-message("  git commit -m \"[data] add soil moisture ", date_str, "\"")
-message("  git push -u origin data/soilmoisture/", date_compact)
-message("\nOpen a pull request on GitHub for Lindsey to review before merging.")
+cat(paste0(
+  "\n── Next steps: commit and open a pull request ───────────────────\n",
+  "Run these commands in your terminal:\n\n",
+  "  git checkout -b data/soilmoisture/", date_compact, "\n",
+  "  git add data/B2_SoilMoisture_FullData.csv\n",
+  "  git commit -m \"[data] add soil moisture ", date_str, "\"\n",
+  "  git push -u origin data/soilmoisture/", date_compact, "\n\n",
+  "Open a pull request on GitHub for Lindsey to review before merging.\n"
+))
