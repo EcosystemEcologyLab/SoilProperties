@@ -1,0 +1,44 @@
+name: Update summary figures and README
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'data/*_FullData.csv'
+      - 'data/processed/B2_SoilInfiltration_Results.csv'
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Install R packages
+        shell: Rscript {0}
+        run: |
+          install.packages(c("ggplot2", "dplyr", "tidyr", "openxlsx"))
+
+      - name: Generate figures and update README
+        run: Rscript R/update_summary_figures.R
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add figures/summary/ README.md
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "[auto] update summary figures $(date -u +%Y-%m-%d)"
+            git push
+          fi
