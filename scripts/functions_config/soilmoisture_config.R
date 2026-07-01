@@ -14,14 +14,14 @@
   if (dir.exists(win_default)) return(win_default)
   if (dir.exists(mac_default)) return(mac_default)
   if (!interactive()) {
-    message("Non-interactive session: DAILY_DATA_DIR not resolved (no server path found).")
+    message("Non-interactive session: DAILY_DATA_DIR not resolved.")
     return(NULL)
   }
   cat(paste0(
     "Could not find the soil moisture data folder automatically.\n",
-    "On Windows, the folder is usually at ",
-    "X:\\moore\\2026_B2_SoilProp\\Data\\SoilMoisture\\B2_SoilMoisture_DataSheet_DailyData\n",
-    "On Mac, it may be at /Volumes/projects/moore/... or similar.\n",
+    "On Windows: X:\\moore\\2026_B2_SoilProp\\Data\\SoilMoisture\\",
+    "B2_SoilMoisture_DataSheet_DailyData\n",
+    "On Mac: /Volumes/projects/moore/... or similar.\n",
     "Enter the full path to the daily data folder: "
   ))
   path <- trimws(readline())

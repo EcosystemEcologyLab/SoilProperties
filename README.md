@@ -20,8 +20,8 @@ productivity than climate variables alone.
 
 | Data type | Last update | Row count |
 |---|---|---|
-| Infiltration field data | 2026-05-28 | 75 |
-| Soil moisture | 2026-06-12 | 131 |
+| Infiltration field data | — | 0 |
+| Soil moisture | 2026-06-16 | 263 |
 | Hyperspectral indices | — | 0 |
 | Jmax / Vcmax | — | — |
 
@@ -34,13 +34,7 @@ Most recent K values (saturated hydraulic conductivity) per replicate from
 
 <!-- Updated automatically by scripts/data_cleaning/update_summary_figures.R on each push to main -->
 
-| Date | SoilType | Group | K\_cm\_per\_hr | qc\_flag |
-|---|---|---|---|---|
-| 2026-06-08 | PSAM | 1 | 66.049 | OK |
-| 2026-06-08 | THCL | 2 | 5.190 | REVIEW_high_K |
-| 2026-06-11 | TCAM | 1 | NA | REVIEW_negative_C1 |
-| 2026-06-11 | TCAM | 2 | 16.798 | REVIEW_high_K |
-| 2026-06-11 | TCAM | 3 | 5.160 | OK |
+_No results yet._
 
 ---
 
