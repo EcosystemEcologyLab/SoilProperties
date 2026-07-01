@@ -13,6 +13,10 @@
                         "SoilMoisture/B2_SoilMoisture_DataSheet_DailyData")
   if (dir.exists(win_default)) return(win_default)
   if (dir.exists(mac_default)) return(mac_default)
+  if (!interactive()) {
+    message("Non-interactive session: DAILY_DATA_DIR not resolved (no server path found).")
+    return(NULL)
+  }
   cat(paste0(
     "Could not find the soil moisture data folder automatically.\n",
     "On Windows, the folder is usually at ",

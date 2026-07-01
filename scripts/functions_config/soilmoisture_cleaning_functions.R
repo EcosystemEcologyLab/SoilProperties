@@ -174,19 +174,22 @@ validate_date <- function(date) {
 
 #' Detect per-row validation violations
 #'
-#' Every rule is checked for every row; all failures for a row are collected
-#' before moving on. A blank or NA cell is UNKNOWN, not zero — reported as
-#' missing. Whitespace is stripped for the categorical lookups only.
+#' Checks categorical and range rules only (Tier 3). Blank or NA cells are
+#' unknown data and pass through without flagging (Tier 2 — no missing-value
+#' violations). Out-of-range numeric values, unrecognised SoilType, unrecognised
+#' Sensor, wrong Depth for sensor type, and non-numeric where numeric is expected
+#' are all reported.
 #'
 #' @param data Data frame with columns SoilType, PlantID, Sensor, Depth, Value.
-#' @return Data frame with columns \code{row}, \code{rule}, \code{observed_value}.
-#'   Zero rows means all rows pass.
+#' @return Data frame with columns \code{row}, \code{column}, \code{rule},
+#'   \code{observed_value}. Zero rows means all rows pass.
 detect_row_violations <- function(data) {
   violations <- list()
 
-  add <- function(row, rule, val) {
+  add <- function(row, column, rule, val) {
     violations[[length(violations) + 1]] <<- data.frame(
       row            = row,
+      column         = column,
       rule           = rule,
       observed_value = as.character(val),
       stringsAsFactors = FALSE
@@ -202,85 +205,201 @@ detect_row_violations <- function(data) {
     depth   <- data$Depth[i]
     value   <- data$Value[i]
 
-    # ── Missing / blank ──────────────────────────────────────────────────────
-    # Blank is UNKNOWN — never silently zeroed or dropped.
-    if (is_blank(soil))    add(i, "SoilType: missing (blank/NA)",  soil)
-    if (is_blank(PlantID)) add(i, "PlantID: missing (blank/NA)",   PlantID)
-    if (is_blank(sensor))  add(i, "Sensor: missing (blank/NA)",    sensor)
-    if (is_blank(depth))   add(i, "Depth: missing (blank/NA)",     depth)
-    if (is_blank(value))   add(i, "Value: missing (blank/NA)",     value)
-
-    soil_present    <- !is_blank(soil)
-    PlantID_present <- !is_blank(PlantID)
-    sensor_present  <- !is_blank(sensor)
-    depth_present   <- !is_blank(depth)
-    value_present   <- !is_blank(value)
-
     # ── SoilType ─────────────────────────────────────────────────────────────
-    if (soil_present && !trimws(soil) %in% VALID_SOIL_TYPES) {
-      add(i, paste0("SoilType: must be one of {",
-                    paste(VALID_SOIL_TYPES, collapse = ", "), "}"), soil)
+    if (!is_blank(soil) && !trimws(soil) %in% VALID_SOIL_TYPES) {
+      add(i, "SoilType",
+          paste0("SoilType: must be one of {", paste(VALID_SOIL_TYPES, collapse = ", "), "}"),
+          soil)
     }
 
     # ── PlantID ───────────────────────────────────────────────────────────────
-    if (PlantID_present) {
+    if (!is_blank(PlantID)) {
       sp <- trimws(as.character(PlantID))
       if (nchar(sp) != 4 || !grepl("^[0-9]+$", sp)) {
-        add(i, "PlantID: must be exactly 4 numbers", PlantID)
+        add(i, "PlantID", "PlantID: must be exactly 4 numeric digits", PlantID)
       }
     }
-    
+
     # ── Sensor ────────────────────────────────────────────────────────────────
-    if (sensor_present && !trimws(sensor) %in% VALID_SENSORS) {
-      add(i, "Sensor: must be T or M", sensor)
+    if (!is_blank(sensor) && !trimws(sensor) %in% VALID_SENSORS) {
+      add(i, "Sensor", "Sensor: must be T or M", sensor)
     }
 
     # ── Depth + Sensor ────────────────────────────────────────────────────────
-    sensor_valid <- sensor_present && trimws(as.character(sensor)) %in% VALID_SENSORS
-    if (sensor_valid && depth_present) {
+    sensor_valid <- !is_blank(sensor) && trimws(as.character(sensor)) %in% VALID_SENSORS
+    if (sensor_valid && !is_blank(depth)) {
       s <- trimws(as.character(sensor))
       d <- suppressWarnings(as.numeric(depth))
       if (is.na(d)) {
-        add(i, "Depth: not numeric", depth)
+        add(i, "Depth", "Depth: not numeric", depth)
       } else if (s == "M" && !d %in% DEPTH_M_VALID) {
-        add(i, paste0("Depth: Sensor=M requires depth in {",
-                      paste(DEPTH_M_VALID, collapse = ", "), "} cm"), depth)
+        add(i, "Depth",
+            paste0("Depth: Sensor=M requires depth in {",
+                   paste(DEPTH_M_VALID, collapse = ", "), "} cm"),
+            depth)
       } else if (s == "T" && (d < DEPTH_T_MIN || d > DEPTH_T_MAX)) {
-        add(i, paste0("Depth: Sensor=T requires ", DEPTH_T_MIN,
-                      " – ", DEPTH_T_MAX, " cm"), depth)
+        add(i, "Depth",
+            paste0("Depth: Sensor=T requires ", DEPTH_T_MIN, " – ", DEPTH_T_MAX, " cm"),
+            depth)
       }
     }
 
     # ── Value + Sensor ────────────────────────────────────────────────────────
-    if (sensor_valid && value_present) {
+    if (sensor_valid && !is_blank(value)) {
       s <- trimws(as.character(sensor))
       v <- suppressWarnings(as.numeric(value))
       if (is.na(v)) {
-        add(i, "Value: not numeric", value)
+        add(i, "Value", "Value: not numeric", value)
       } else if (s == "M" && (v < VALUE_M_MIN || v > VALUE_M_MAX)) {
-        add(i, paste0("Value: Sensor=M requires ", VALUE_M_MIN,
-                      " – ", VALUE_M_MAX, " (% VWC)"), value)
+        add(i, "Value",
+            paste0("Value: Sensor=M requires ", VALUE_M_MIN,
+                   " – ", VALUE_M_MAX, " (% VWC)"),
+            value)
       } else if (s == "T" && (v < VALUE_T_MIN || v > VALUE_T_MAX)) {
-        add(i, paste0("Value: Sensor=T requires ", VALUE_T_MIN,
-                      " – ", VALUE_T_MAX, " (°C)"), value)
+        add(i, "Value",
+            paste0("Value: Sensor=T requires ", VALUE_T_MIN,
+                   " – ", VALUE_T_MAX, " (°C)"),
+            value)
       }
     }
   }
 
   if (length(violations) == 0) {
     return(data.frame(
-      row = integer(0), rule = character(0), observed_value = character(0),
+      row = integer(0), column = character(0),
+      rule = character(0), observed_value = character(0),
       stringsAsFactors = FALSE
     ))
   }
   do.call(rbind, violations)
 }
 
-#' Validate date and all rows, stopping loudly on any violation
+#' Write a corrected value back to both sheets of the source xlsx
+#'
+#' @param filepath Character. Full path to the .xlsx file.
+#' @param row_idx Integer. 1-based data row index (not counting the header row).
+#' @param col_name Character. Column name to update.
+#' @param new_value The replacement value (typed to match the column).
+write_correction_to_xlsx <- function(filepath, row_idx, col_name, new_value) {
+  wb <- tryCatch(
+    openxlsx::loadWorkbook(filepath),
+    error = function(e) stop(
+      "Cannot open workbook for writing: ", filepath, "\n",
+      conditionMessage(e), call. = FALSE
+    )
+  )
+  s1_names <- names(openxlsx::read.xlsx(wb, sheet = 1))
+  s2_names <- names(openxlsx::read.xlsx(wb, sheet = 2))
+  col1 <- which(s1_names == col_name)
+  col2 <- which(s2_names == col_name)
+  if (length(col1) == 0) stop("Column '", col_name, "' not found in Sheet1.", call. = FALSE)
+  if (length(col2) == 0) stop("Column '", col_name, "' not found in Sheet2.", call. = FALSE)
+  # row_idx is the 1-based data row; +1 accounts for the header row in xlsx
+  openxlsx::writeData(wb, sheet = 1, x = new_value,
+                      startRow = row_idx + 1L, startCol = col1[1])
+  openxlsx::writeData(wb, sheet = 2, x = new_value,
+                      startRow = row_idx + 1L, startCol = col2[1])
+  tryCatch(
+    openxlsx::saveWorkbook(wb, filepath, overwrite = TRUE),
+    error = function(e) stop(
+      "Failed to save workbook: ", filepath, "\n",
+      "Attempted to set row ", row_idx, ", column '", col_name,
+      "' to '", new_value, "'.\n",
+      "Save the value manually in both sheets and re-run.\n",
+      conditionMessage(e), call. = FALSE
+    )
+  )
+  invisible(TRUE)
+}
+
+#' Interactively review violations with the user
+#'
+#' Prints the full violations table, then loops through each violation one at a
+#' time, prompting the user to enter a corrected value or press Y to flag the
+#' row. Corrections are validated against the same rule before being written back
+#' to both sheets of the source xlsx. Invalid corrections are re-prompted.
 #'
 #' @param data Data frame with columns SoilType, PlantID, Sensor, Depth, Value.
+#' @param viols Data frame returned by \code{detect_row_violations}.
+#' @param filepath Character. Full path to the source .xlsx (for write-back).
+#' @param confirm_fn Function used to prompt the user; defaults to
+#'   \code{readline}. Override in tests to avoid interactive blocking.
+#' @param write_fn Function used to write back to xlsx; defaults to
+#'   \code{write_correction_to_xlsx}. Override in tests.
+#' @return \code{data} with a \code{Flag} column: \code{"REVIEW"} for rows the
+#'   user flagged with Y, \code{NA} for all others.
+review_violations <- function(data, viols, filepath,
+                              confirm_fn = readline,
+                              write_fn   = write_correction_to_xlsx) {
+  data$Flag <- NA_character_
+
+  cat(paste0(
+    "\n── Validation violations ─────────────────────────────────────────\n",
+    nrow(viols), " violation(s) across ",
+    length(unique(viols$row)), " row(s):\n\n"
+  ))
+  print(viols, row.names = FALSE)
+  cat("\n")
+
+  for (k in seq_len(nrow(viols))) {
+    v        <- viols[k, ]
+    row_idx  <- v$row
+    col_name <- v$column
+    obs_val  <- v$observed_value
+    rule_txt <- v$rule
+
+    repeat {
+      answer <- trimws(confirm_fn(paste0(
+        "\nRow ", row_idx, " | ", col_name,
+        " | Sensor=", data$Sensor[row_idx],
+        " | observed: ", obs_val,
+        " | rule: ", rule_txt,
+        "\n  Enter a corrected value, or press Y to flag this row and keep the original value: "
+      )))
+
+      if (toupper(answer) == "Y") {
+        data$Flag[row_idx] <- "REVIEW"
+        message("  Row ", row_idx, " flagged as REVIEW.")
+        break
+      }
+
+      # Validate the candidate correction against the same rule
+      test_row             <- data[row_idx, , drop = FALSE]
+      test_row[[col_name]] <- answer
+      new_viols  <- detect_row_violations(test_row)
+      still_bad  <- new_viols[!is.na(new_viols$column) & new_viols$column == col_name, ]
+
+      if (nrow(still_bad) == 0) {
+        typed_val    <- if (is.numeric(data[[col_name]])) {
+          suppressWarnings(as.numeric(answer))
+        } else {
+          answer
+        }
+        original_val <- data[[col_name]][row_idx]
+        write_fn(filepath, row_idx, col_name, typed_val)
+        data[[col_name]][row_idx] <- typed_val
+        message("  Row ", row_idx, " '", col_name, "' corrected: '",
+                original_val, "' → '", typed_val, "'.")
+        break
+      } else {
+        cat("  '", answer, "' still fails: ", still_bad$rule[1],
+            " — try again.\n", sep = "")
+      }
+    }
+  }
+
+  data
+}
+
+#' Validate the date, stopping loudly on any violation
+#'
+#' Row-level range and categorical checks are now handled interactively by
+#' \code{review_violations} in the pipeline script. This function only enforces
+#' the date check (wrong year, outside season window).
+#'
+#' @param data Data frame (passed through unchanged).
 #' @param date A \code{Date} object from the filename.
-#' @return Invisible \code{data} when all rows pass.
+#' @return Invisible \code{data} when the date is valid.
 validate_rows <- function(data, date) {
   date_viols <- validate_date(date)
   if (length(date_viols) > 0) {
@@ -289,17 +408,6 @@ validate_rows <- function(data, date) {
       "\nFix the filename and re-run."
     )
   }
-
-  viols <- detect_row_violations(data)
-  if (nrow(viols) > 0) {
-    message("Validation failed — ", nrow(viols), " violation(s):\n")
-    print(viols, row.names = FALSE)
-    stop(
-      "\n", nrow(viols), " validation violation(s) found.\n",
-      "Fix the source .xlsx and re-run."
-    )
-  }
-
   invisible(data)
 }
 
@@ -341,13 +449,16 @@ check_duplicate_date <- function(master_csv_path, date, confirm_fn = readline) {
 
 #' Append validated rows to the master CSV
 #'
-#' @param data Data frame with columns SoilType, PlantID, Sensor, Depth, Value.
+#' @param data Data frame with columns SoilType, PlantID, Sensor, Depth, Value,
+#'   and optionally Flag. If Flag is absent it is set to \code{NA} for all rows.
 #' @param date A \code{Date} object.
 #' @param master_csv_path Character. Path to the master CSV.
 #' @param replace Logical. If \code{TRUE}, removes any existing rows for this
 #'   date before appending.
-#' @return Invisible data frame of the appended rows (with Date column).
+#' @return Invisible data frame of the appended rows (with Date and Flag columns).
 append_to_master <- function(data, date, master_csv_path, replace = FALSE) {
+  if (!"Flag" %in% names(data)) data$Flag <- NA_character_
+
   new_rows <- data.frame(
     Date     = format(date),
     SoilType = data$SoilType,
@@ -355,12 +466,14 @@ append_to_master <- function(data, date, master_csv_path, replace = FALSE) {
     Sensor   = data$Sensor,
     Depth    = data$Depth,
     Value    = data$Value,
+    Flag     = data$Flag,
     stringsAsFactors = FALSE
   )
 
   if (file.exists(master_csv_path)) {
     master <- utils::read.csv(master_csv_path, stringsAsFactors = FALSE,
                               colClasses = c(PlantID = "character"))
+    if (!"Flag" %in% names(master)) master$Flag <- NA_character_
     if (replace) master <- master[master$Date != format(date), ]
     combined <- rbind(master, new_rows)
   } else {

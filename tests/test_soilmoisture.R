@@ -152,14 +152,15 @@ test_that("detect_row_violations catches invalid SoilType", {
   expect_true(any(grepl("SoilType.*must be one of", v$rule)))
 })
 
-test_that("detect_row_violations catches missing SoilType (NA)", {
-  v <- detect_row_violations(valid_row(SoilType = NA))
-  expect_true(any(grepl("SoilType.*missing", v$rule)))
+test_that("detect_row_violations passes blank/NA SoilType (unknown data, not a violation)", {
+  expect_equal(nrow(detect_row_violations(valid_row(SoilType = NA))), 0)
+  expect_equal(nrow(detect_row_violations(valid_row(SoilType = ""))), 0)
 })
 
-test_that("detect_row_violations catches missing SoilType (blank string)", {
-  v <- detect_row_violations(valid_row(SoilType = ""))
-  expect_true(any(grepl("SoilType.*missing", v$rule)))
+test_that("detect_row_violations returns column field alongside rule", {
+  v <- detect_row_violations(valid_row(SoilType = "XXXX"))
+  expect_true("column" %in% names(v))
+  expect_equal(v$column[grepl("SoilType", v$rule)], "SoilType")
 })
 
 test_that("detect_row_violations catches PlantID of wrong length", {
@@ -238,6 +239,64 @@ test_that("detect_row_violations reports all violations in a row, not just the f
   # At least 3 violations from 3 bad fields
   expect_gte(nrow(v), 3L)
   expect_true(all(v$row == 1L))
+})
+
+# ── review_violations ─────────────────────────────────────────────────────────
+
+test_that("review_violations: Y flags the row as REVIEW and keeps the original value", {
+  data_viol <- valid_row(Value = 150)   # 150 > VALUE_M_MAX for Sensor=M
+  viols <- detect_row_violations(data_viol)
+  result <- review_violations(
+    data_viol, viols, filepath = "unused.xlsx",
+    confirm_fn = function(...) "Y",
+    write_fn   = function(...) invisible(TRUE)
+  )
+  expect_equal(result$Flag[1], "REVIEW")
+  expect_equal(result$Value[1], 150)    # original value kept
+})
+
+test_that("review_violations: valid corrected value replaces data and leaves Flag=NA", {
+  data_viol <- valid_row(Value = 150)
+  viols <- detect_row_violations(data_viol)
+  result <- review_violations(
+    data_viol, viols, filepath = "unused.xlsx",
+    confirm_fn = function(...) "20",    # 20 is within VALUE_M_MIN–VALUE_M_MAX
+    write_fn   = function(...) invisible(TRUE)
+  )
+  expect_equal(result$Value[1], 20)
+  expect_true(is.na(result$Flag[1]))
+})
+
+test_that("review_violations: invalid corrected value re-prompts; valid on retry clears violation", {
+  data_viol <- valid_row(Value = 150)
+  viols <- detect_row_violations(data_viol)
+  call_count <- 0L
+  responses  <- c("999", "20")   # 999 still fails the rule; 20 passes
+  mock_fn <- function(...) { call_count <<- call_count + 1L; responses[call_count] }
+  result <- review_violations(
+    data_viol, viols, filepath = "unused.xlsx",
+    confirm_fn = mock_fn,
+    write_fn   = function(...) invisible(TRUE)
+  )
+  expect_equal(call_count, 2L)          # prompted twice
+  expect_equal(result$Value[1], 20)
+  expect_true(is.na(result$Flag[1]))
+})
+
+test_that("review_violations: invalid then Y flags row after re-prompt", {
+  data_viol <- valid_row(Value = 150)
+  viols <- detect_row_violations(data_viol)
+  call_count <- 0L
+  responses  <- c("999", "Y")
+  mock_fn <- function(...) { call_count <<- call_count + 1L; responses[call_count] }
+  result <- review_violations(
+    data_viol, viols, filepath = "unused.xlsx",
+    confirm_fn = mock_fn,
+    write_fn   = function(...) invisible(TRUE)
+  )
+  expect_equal(call_count, 2L)
+  expect_equal(result$Flag[1], "REVIEW")
+  expect_equal(result$Value[1], 150)    # original kept
 })
 
 # ── check_duplicate_date ───────────────────────────────────────────────────────
@@ -321,6 +380,39 @@ test_that("append_to_master with replace=TRUE removes old rows for that date onl
   expect_equal(result$Value[result$Date == "2026-06-01"], 99)
   # June 2 is untouched
   expect_equal(result$Value[result$Date == "2026-06-02"], 20)
+})
+
+test_that("append_to_master adds Flag=NA when data has no Flag column", {
+  tmp <- tempfile(fileext = ".csv")
+  on.exit(unlink(tmp))
+  append_to_master(valid_row(), VALID_DATE, tmp)
+  result <- utils::read.csv(tmp, stringsAsFactors = FALSE)
+  expect_true("Flag" %in% names(result))
+  expect_true(is.na(result$Flag[1]))
+})
+
+test_that("append_to_master preserves Flag=REVIEW in output", {
+  tmp <- tempfile(fileext = ".csv")
+  on.exit(unlink(tmp))
+  row_flagged      <- valid_row()
+  row_flagged$Flag <- "REVIEW"
+  append_to_master(row_flagged, VALID_DATE, tmp)
+  result <- utils::read.csv(tmp, stringsAsFactors = FALSE)
+  expect_equal(result$Flag[1], "REVIEW")
+})
+
+test_that("append_to_master backfills Flag=NA for existing rows that predate the column", {
+  tmp <- tempfile(fileext = ".csv")
+  on.exit(unlink(tmp))
+  utils::write.csv(
+    data.frame(Date = "2026-06-01", SoilType = "PSAM", PlantID = "1234",
+               Sensor = "M", Depth = 12, Value = 15),
+    tmp, row.names = FALSE
+  )
+  append_to_master(valid_row(), as.Date("2026-06-02"), tmp)
+  result <- utils::read.csv(tmp, stringsAsFactors = FALSE)
+  expect_true("Flag" %in% names(result))
+  expect_true(is.na(result$Flag[result$Date == "2026-06-01"]))
 })
 
 # ── Fixture-based tests ────────────────────────────────────────────────────────

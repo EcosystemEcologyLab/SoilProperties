@@ -41,10 +41,31 @@ message(
   nrow(sheets$sheet1), " row(s)."
 )
 
-# ── Step 2: Validate ranges and codes ───────────────────────────────────
-message("\n── Step 2: Validating data ranges and codes ────────────────────")
-validate_rows(sheets$sheet1, date)
-message("Step 2 passed: all ", nrow(sheets$sheet1), " row(s) are valid.")
+# ── Step 2: Validate date; interactively review row violations ───────────
+message("\n── Step 2: Validating data ─────────────────────────────────────")
+validate_rows(sheets$sheet1, date)   # date only — stops loudly on date violation
+
+viols <- detect_row_violations(sheets$sheet1)
+if (nrow(viols) == 0) {
+  sheets$sheet1$Flag <- NA_character_
+  message("Step 2 passed: all ", nrow(sheets$sheet1), " row(s) are valid.")
+} else {
+  sheets$sheet1 <- review_violations(sheets$sheet1, viols, filepath)
+  # Final re-check: only unflagged rows need to be clean
+  flagged_rows <- which(!is.na(sheets$sheet1$Flag) & sheets$sheet1$Flag == "REVIEW")
+  final_viols  <- detect_row_violations(sheets$sheet1)
+  remaining    <- final_viols[!final_viols$row %in% flagged_rows, , drop = FALSE]
+  if (nrow(remaining) > 0) {
+    message("Final re-check: ", nrow(remaining), " unresolved violation(s):")
+    print(remaining, row.names = FALSE)
+    stop("Unresolved violations after review. Fix the source .xlsx and re-run.")
+  }
+  n_flagged <- length(flagged_rows)
+  message(
+    "Step 2 complete: ", n_flagged, " row(s) flagged REVIEW, ",
+    nrow(sheets$sheet1) - n_flagged, " row(s) clean."
+  )
+}
 
 # ── Step 3: Append to master CSV ────────────────────────────────────────
 message("\n── Step 3: Appending to master CSV ────────────────────────────")
