@@ -66,7 +66,7 @@ DEPTH_T_MAX <- 80L
 # Moisture sensor (M): volumetric water content (% VWC). Values outside 0–40
 # indicate sensor failure or a data entry error.
 VALUE_M_MIN <- 0
-VALUE_M_MAX <- 40
+VALUE_M_MAX <- 50
 
 # Temperature sensor (T): degrees Celsius. Values outside 10–55 are implausible
 # for Biosphere 2 soil conditions.
