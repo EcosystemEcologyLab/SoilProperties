@@ -415,7 +415,7 @@ validate_rows <- function(data, date) {
 
 #' Check for an existing date in the master CSV and confirm replacement
 #'
-#' @param master_csv_path Character. Path to \code{B2_SoilMoisture_FullData.csv}.
+#' @param master_csv_path Character. Path to \code{data/Full/B2_SoilMoisture_FullData.csv}.
 #' @param date A \code{Date} object.
 #' @param confirm_fn Function used to prompt the user; defaults to
 #'   \code{readline}. Override in tests to avoid interactive blocking.

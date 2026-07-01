@@ -60,7 +60,7 @@ spectral_id_file <- file.path(base_path, "SpectralID",
                               paste0("SpectralID_", date, ".csv"))
 output_spectral  <- file.path(base_path, "FullSpectralFieldData",
                               "SpectralFieldData.csv")
-output_indices   <- "X:/moore/2026_B2_SoilProp/Code/data/SpectralIndices_FullData.csv"
+output_indices   <- file.path("data", "Full", "SpectralIndices_FullData.csv")
 
 # plant_id_col: the SpectralID column used as the plant identifier in output.
 # PlantID# is the numeric ID (parallel to the 4-digit PlantID used in the

@@ -5,8 +5,9 @@ on:
     branches:
       - main
     paths:
-      - 'data/*_FullData.csv'
+      - 'data/Full/*_FullData.csv'
       - 'data/processed/B2_SoilInfiltration_Results.csv'
+      - 'data/processed/B2_SoilMoisture_Summary.csv'
   workflow_dispatch:
 
 jobs:

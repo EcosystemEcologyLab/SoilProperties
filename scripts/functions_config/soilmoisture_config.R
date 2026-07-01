@@ -31,31 +31,8 @@
 DAILY_DATA_DIR <- .resolve_daily_data_dir()
 rm(.resolve_daily_data_dir)
 
-.resolve_master_csv <- function() {
-  win_default <- file.path("X:", "moore", "2026_B2_SoilProp", "Code",
-                           "data", "B2_SoilMoisture_FullData.csv")
-  mac_default <- paste0("/Volumes/projects/moore/2026_B2_SoilProp/Code/",
-                        "data/B2_SoilMoisture_FullData.csv")
-  if (file.exists(win_default)) return(win_default)
-  if (file.exists(mac_default)) return(mac_default)
-  if (!interactive()) {
-    message("Non-interactive session: MASTER_CSV not resolved.")
-    return(NULL)
-  }
-  cat(paste0(
-    "Could not find B2_SoilMoisture_FullData.csv automatically.\n",
-    "On Windows: X:\\moore\\2026_B2_SoilProp\\Code\\data\\",
-    "B2_SoilMoisture_FullData.csv\n",
-    "On Mac: /Volumes/projects/moore/2026_B2_SoilProp/Code/data/",
-    "B2_SoilMoisture_FullData.csv\n",
-    "Enter the full path to the master CSV file: "
-  ))
-  path <- trimws(readline())
-  if (!file.exists(path)) stop("File not found: ", path, call. = FALSE)
-  path
-}
-MASTER_CSV <- .resolve_master_csv()
-rm(.resolve_master_csv)
+# MASTER_CSV: git-tracked master data file, relative to project root.
+MASTER_CSV  <- file.path("data", "Full", "B2_SoilMoisture_FullData.csv")
 
 # APPEND_LOG: run-level provenance log (outputs/ is gitignored; created at runtime).
 APPEND_LOG  <- file.path("outputs", "append_log.csv")

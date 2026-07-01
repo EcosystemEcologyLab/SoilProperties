@@ -5,11 +5,11 @@
 #
 # Inputs:
 #   - A daily entry .xlsx (Soil_Infiltration_FieldData_YYYYMMDD.xlsx) in data/raw/
-#   - The existing master CSV (data/B2_SoilInfiltration_FullData.csv)
+#   - The existing master CSV (data/Full/B2_SoilInfiltration_FullData.csv)
 #   - Reference tables in data/reference/
 #
 # Outputs (on success):
-#   - data/B2_SoilInfiltration_FullData.csv        updated master (git-tracked)
+#   - data/Full/B2_SoilInfiltration_FullData.csv        updated master (git-tracked)
 #   - data/processed/B2_SoilInfiltration_Results.csv  K per replicate
 #   - figures/B2_SoilInfiltration_curves_<YYYYMMDD>.png
 #   - outputs/infiltration_append_log.csv           provenance log (gitignored)
@@ -81,7 +81,7 @@ cat(paste0(
   "\n── Next steps: commit and open a pull request ───────────────────\n",
   "Run these commands in your terminal:\n\n",
   "  git checkout -b data/infiltration/", date_compact, "\n",
-  "  git add data/B2_SoilInfiltration_FullData.csv",
+  "  git add data/Full/B2_SoilInfiltration_FullData.csv",
   " data/processed/B2_SoilInfiltration_Results.csv",
   " figures/B2_SoilInfiltration_curves_", date_compact, ".png\n",
   "  git commit -m \"[data] add infiltration ", date_str, "\"\n",

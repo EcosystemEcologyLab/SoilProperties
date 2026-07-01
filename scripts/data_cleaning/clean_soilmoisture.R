@@ -84,7 +84,7 @@ cat(paste0(
   "\n── Next steps: commit and open a pull request ───────────────────\n",
   "Run these commands in your terminal:\n\n",
   "  git checkout -b data/soilmoisture/", date_compact, "\n",
-  "  git add data/B2_SoilMoisture_FullData.csv\n",
+  "  git add data/Full/B2_SoilMoisture_FullData.csv\n",
   "  git commit -m \"[data] add soil moisture ", date_str, "\"\n",
   "  git push -u origin data/soilmoisture/", date_compact, "\n\n",
   "Open a pull request on GitHub for Lindsey to review before merging.\n"
