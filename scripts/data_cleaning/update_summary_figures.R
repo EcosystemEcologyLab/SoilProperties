@@ -25,12 +25,13 @@ read_if_data <- function(path) {
 
 # ── Load data ─────────────────────────────────────────────────────────────────
 
-infil_full    <- read_if_data("data/B2_SoilInfiltration_FullData.csv")
-moisture      <- read_if_data("data/B2_SoilMoisture_FullData.csv")
-spectra       <- read_if_data("data/SpectralIndices_FullData.csv")
-infil_results <- read_if_data("data/processed/B2_SoilInfiltration_Results.csv")
+infil_full       <- read_if_data("data/Full/B2_SoilInfiltration_FullData.csv")
+moisture         <- read_if_data("data/Full/B2_SoilMoisture_FullData.csv")
+spectra          <- read_if_data("data/Full/SpectralIndices_FullData.csv")
+infil_results    <- read_if_data("data/processed/B2_SoilInfiltration_Results.csv")
+moisture_summary <- read_if_data("data/processed/B2_SoilMoisture_Summary.csv")
 # Jmax/Vcmax: file not yet available; update path when data arrives
-jmax_vcmax    <- read_if_data("data/B2_GasExchange_FullData.csv")
+jmax_vcmax       <- read_if_data("data/B2_GasExchange_FullData.csv")
 
 # ── Figure 1: Hyperspectral indices timeseries ────────────────────────────────
 # Colours by plantID — SpectralIndices_FullData.csv has no SoilType column.
@@ -69,38 +70,49 @@ if (!is.null(spectra)) {
   message("SpectralIndices_FullData.csv has no data — skipping hyperspectral figure")
 }
 
-# ── Figure 2: Soil moisture timeseries (12 cm and 20 cm) ─────────────────────
-# B2_SoilMoisture_FullData.csv is in long format: one row per sensor reading.
-# Depth values expected to be numeric (12, 20) or character ("12cm", "20cm").
+# ── Figure 2: Soil moisture per-plant daily averages ─────────────────────────
+# Reads the wide-format summary produced by summarise_soilmoisture.R.
+# Pivots back to long for faceting by sensor type (T vs M).
 
-if (!is.null(moisture)) {
-  moisture_plot <- moisture |>
-    mutate(
-      Date  = as.Date(Date),
-      Depth = as.character(Depth)
+if (!is.null(moisture_summary)) {
+  moisture_long <- moisture_summary |>
+    mutate(Date = as.Date(Date)) |>
+    tidyr::pivot_longer(
+      cols         = tidyr::matches("_(mean|sd)$"),
+      names_to     = c("sensor_depth", ".value"),
+      names_pattern = "^(.+)_(mean|sd)$"
     ) |>
-    filter(Depth %in% c("12", "20", "12cm", "20cm")) |>
-    mutate(depth_label = ifelse(grepl("cm", Depth), Depth, paste0(Depth, " cm")))
+    mutate(
+      Sensor       = sub("_.*$", "", sensor_depth),
+      sensor_label = dplyr::case_when(
+        Sensor == "T" ~ "Temperature (°C)",
+        Sensor == "M" ~ "Soil moisture (% VWC)",
+        TRUE          ~ Sensor
+      )
+    )
 
-  p2 <- ggplot(moisture_plot,
-               aes(x = Date, y = Value, colour = SoilType, group = SoilType)) +
-    geom_line(linewidth = 0.6) +
-    geom_point(size = 1.5) +
-    facet_wrap(~depth_label, ncol = 1) +
+  p2 <- ggplot(moisture_long,
+               aes(x = Date, y = mean, colour = SoilType, group = PlantID)) +
+    geom_point(size = 1.5, alpha = 0.7) +
+    geom_errorbar(
+      aes(ymin = mean - sd, ymax = mean + sd),
+      width = 0.5, alpha = 0.5
+    ) +
+    facet_wrap(~sensor_label, ncol = 1, scales = "free_y") +
     labs(
-      title  = "Soil moisture over time",
+      title  = "Soil moisture and temperature — per-plant daily averages",
       x      = "Date",
-      y      = "Soil moisture",
+      y      = "Mean value",
       colour = "Soil type"
     ) +
     theme_bw() +
     theme(legend.position = "bottom")
 
-  ggsave("figures/summary/soilmoisture_timeseries.png", p2,
+  ggsave("figures/summary/soilmoisture_summary.png", p2,
          width = 10, height = 8, dpi = 150)
-  message("Saved: figures/summary/soilmoisture_timeseries.png")
+  message("Saved: figures/summary/soilmoisture_summary.png")
 } else {
-  message("B2_SoilMoisture_FullData.csv has no data — skipping soil moisture figure")
+  message("B2_SoilMoisture_Summary.csv has no data — skipping soil moisture figure")
 }
 
 # ── Figure 3: Jmax and Vcmax timeseries ──────────────────────────────────────
@@ -150,9 +162,9 @@ get_status <- function(path) {
 }
 
 datasets <- list(
-  list(label = "Infiltration field data", path = "data/B2_SoilInfiltration_FullData.csv"),
-  list(label = "Soil moisture",           path = "data/B2_SoilMoisture_FullData.csv"),
-  list(label = "Hyperspectral indices",   path = "data/SpectralIndices_FullData.csv"),
+  list(label = "Infiltration field data", path = "data/Full/B2_SoilInfiltration_FullData.csv"),
+  list(label = "Soil moisture",           path = "data/Full/B2_SoilMoisture_FullData.csv"),
+  list(label = "Hyperspectral indices",   path = "data/Full/SpectralIndices_FullData.csv"),
   list(label = "Jmax / Vcmax",           path = "data/B2_GasExchange_FullData.csv")
 )
 
@@ -224,7 +236,7 @@ readme <- paste0(
   "### Hyperspectral indices\n\n",
   "![Hyperspectral indices timeseries](figures/summary/hyperspectral_indices_timeseries.png)\n\n",
   "### Soil moisture\n\n",
-  "![Soil moisture timeseries](figures/summary/soilmoisture_timeseries.png)\n\n",
+  "![Soil moisture per-plant summary](figures/summary/soilmoisture_summary.png)\n\n",
   "### Jmax and Vcmax\n\n",
   "![Jmax and Vcmax timeseries](figures/summary/jmax_vcmax_timeseries.png)\n\n",
   "---\n\n",

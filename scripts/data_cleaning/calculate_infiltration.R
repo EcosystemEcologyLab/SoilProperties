@@ -4,7 +4,7 @@
 #
 # Usage: Rscript scripts/data_cleaning/calculate_infiltration.R
 #
-# Reads data/B2_SoilInfiltration_FullData.csv, looks up van Genuchten alpha/n
+# Reads data/Full/B2_SoilInfiltration_FullData.csv, looks up van Genuchten alpha/n
 # via the SoilType -> USDA texture mapping in data/reference/subplot_soiltexture.csv
 # (field abbreviations are in the 'subplot' column of that file), fits
 # I = C1*sqrt(t) + C2*t per replicate (grouped by Date + SoilType + Group),

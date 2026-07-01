@@ -32,8 +32,7 @@ DAILY_DATA_DIR <- .resolve_daily_data_dir()
 rm(.resolve_daily_data_dir)
 
 # MASTER_CSV: git-tracked master data file, relative to project root.
-MASTER_CSV  <- file.path("X:", "moore", "2026_B2_SoilProp",
-                         "Code", "data", "B2_SoilMoisture_FullData.csv")
+MASTER_CSV  <- file.path("data", "Full", "B2_SoilMoisture_FullData.csv")
 
 # APPEND_LOG: run-level provenance log (outputs/ is gitignored; created at runtime).
 APPEND_LOG  <- file.path("outputs", "append_log.csv")
