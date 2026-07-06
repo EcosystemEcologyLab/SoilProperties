@@ -73,7 +73,7 @@ message(
 
 # ── Step 4: Compute K ────────────────────────────────────────────────────────
 message("\n── Step 4: Computing K (fitting infiltration curves) ────────────")
-source("scripts/data_cleaning/calculate_infiltration.R")
+source("scripts/data_processing/calculate_infiltration.R")
 run_calculate_infiltration()
 
 # ── Git workflow ──────────────────────────────────────────────────────────────

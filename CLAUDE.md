@@ -91,7 +91,7 @@ The following directories are git-tracked:
 ### Compute pipeline (batch, run from terminal)
 
 ```
-Rscript scripts/data_cleaning/calculate_infiltration.R
+Rscript scripts/data_processing/calculate_infiltration.R
 ```
 
 ### ASD hyperspectral pipeline (standalone)
@@ -156,7 +156,7 @@ Writes:
 
 All thresholds are declared as documented named constants in `scripts/functions_config/soilinfiltration_config.R`.
 
-### Compute pipeline — quality flags (`scripts/data_cleaning/calculate_infiltration.R`)
+### Compute pipeline — quality flags (`scripts/data_processing/calculate_infiltration.R`)
 
 Fit quality is not a data-entry error — flags do not stop the script; every replicate gets a row:
 
@@ -173,7 +173,7 @@ Fit quality is not a data-entry error — flags do not stop the script; every re
 
 ## Confidence and Quality Vocabulary
 
-The fit-quality flags in `scripts/data_cleaning/calculate_infiltration.R` map to the shared vocabulary from SCIENCE_PRINCIPLES.md:
+The fit-quality flags in `scripts/data_processing/calculate_infiltration.R` map to the shared vocabulary from SCIENCE_PRINCIPLES.md:
 
 | Shared label | `qc_flag` value |
 |---|---|
@@ -210,7 +210,7 @@ field day provides the full append history via `git log`.
 
 There are **no exclusion or unknown logs** in the entry pipeline. The stop-loudly model means no data is silently dropped — violations stop the script and the scientist fixes the source file. There is nothing to log.
 
-The compute pipeline (`scripts/data_cleaning/calculate_infiltration.R`) uses `qc_flag` values in the results CSV to flag replicates that could not yield a valid K (see QC and Quality Standards above). These are not "excluded" — they appear in the results with `K_cm_per_s = NA` and a descriptive `qc_flag`.
+The compute pipeline (`scripts/data_processing/calculate_infiltration.R`) uses `qc_flag` values in the results CSV to flag replicates that could not yield a valid K (see QC and Quality Standards above). These are not "excluded" — they appear in the results with `K_cm_per_s = NA` and a descriptive `qc_flag`.
 
 ---
 

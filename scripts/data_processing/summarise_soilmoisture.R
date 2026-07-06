@@ -1,6 +1,6 @@
 # summarise_soilmoisture.R
 # Run from RStudio with SoilProperties.Rproj open (working dir = project root).
-# Call: source("scripts/data_cleaning/summarise_soilmoisture.R")
+# Call: source("scripts/data_processing/summarise_soilmoisture.R")
 #
 # Reads data/Full/B2_SoilMoisture_FullData.csv, groups by Date + SoilType + PlantID,
 # and summarises each Sensor/Depth combination to mean and SD across readings.
