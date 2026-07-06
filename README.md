@@ -21,7 +21,7 @@ productivity than climate variables alone.
 | Data type | Last update | Row count |
 |---|---|---|
 | Infiltration field data | — | 0 |
-| Soil moisture | 2026-06-16 | 263 |
+| Soil moisture | 2026-06-17 | 347 |
 | Hyperspectral indices | — | 0 |
 | Jmax / Vcmax | — | — |
 
