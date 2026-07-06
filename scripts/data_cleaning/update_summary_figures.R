@@ -1,4 +1,4 @@
-#' Standalone summary figure and README update script.
+#' Standalone summary figure and README update script..
 #'
 #' Run via: Rscript scripts/data_cleaning/update_summary_figures.R
 #' Not sourced by the infiltration pipeline — run separately or via CI.
