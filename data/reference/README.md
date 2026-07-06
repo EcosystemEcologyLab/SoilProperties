@@ -1,7 +1,7 @@
 # Reference tables — provenance
 
 These two CSVs are **git-tracked** scientific reference data. They are read by
-`scripts/data_cleaning/calculate_infiltration.R`. Do not edit them without a
+`scripts/data_processing/calculate_infiltration.R`. Do not edit them without a
 commit message explaining the scientific reason for the change.
 
 ## `vg_parameters.csv`

@@ -65,5 +65,5 @@ message(
 message(
   "\n── Step 4: Manual git workflow ────────────────────────────────────────",
   "\nCreate a branch, commit the updated CSV, push, and open a PR for review.",
-  "\nTo compute K from the updated master: Rscript scripts/data_cleaning/calculate_infiltration.R"
+  "\nTo compute K from the updated master: Rscript scripts/data_processing/calculate_infiltration.R"
 )

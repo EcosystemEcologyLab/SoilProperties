@@ -1,4 +1,4 @@
-# Tests for QC flag logic in .calc_replicate() (R/calculate_infiltration.R).
+# Tests for QC flag logic in .calc_replicate() (scripts/data_processing/calculate_infiltration.R).
 #
 # helper-root.R sets working dir to project root and sources infiltration_math.R.
 # Each test group sources calculate_infiltration.R (which is safe to source
@@ -7,7 +7,7 @@
 local({
   old <- setwd(PROJECT_ROOT)
   on.exit(setwd(old))
-  source(file.path(PROJECT_ROOT, "scripts", "data_cleaning", "calculate_infiltration.R"))
+  source(file.path(PROJECT_ROOT, "scripts", "data_processing", "calculate_infiltration.R"))
 })
 
 # ── Shared fixtures ────────────────────────────────────────────────────────────

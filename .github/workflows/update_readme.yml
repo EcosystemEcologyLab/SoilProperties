@@ -31,7 +31,7 @@ jobs:
           install.packages(c("ggplot2", "dplyr", "tidyr", "openxlsx"))
 
       - name: Generate figures and update README
-        run: Rscript scripts/data_cleaning/update_summary_figures.R
+        run: Rscript scripts/data_processing/update_summary_figures.R
 
       - name: Commit changes
         run: |
