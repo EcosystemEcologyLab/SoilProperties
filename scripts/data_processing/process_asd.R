@@ -15,7 +15,7 @@
 #   present but entirely blank/NA for this run, it is dropped from grouping
 #   automatically — no manual config needed.
 #
-# Run from RStudio with the project open: source("process_asd.R")
+# Run from RStudio: open this file and source it (Ctrl+Shift+S / Cmd+Shift+S).
 
 if (!interactive()) {
   stop(
@@ -27,6 +27,11 @@ if (!interactive()) {
 # ============================================================
 #  CONFIGURATION — edit these paths before each run
 # ============================================================
+
+# Set working directory to this script's location
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+# Terminal users: run from the repo root with
+#   Rscript scripts/data_processing/process_asd.R
 
 date <- trimws(readline(
   "Enter the date for this ASD run (YYYYMMDD, e.g. 20261011): "
