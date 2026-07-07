@@ -96,7 +96,7 @@ Rscript scripts/data_processing/calculate_infiltration.R
 
 ### ASD hyperspectral pipeline (standalone)
 
-`scripts/data_cleaning/process_asd.R` — processes ASD Field Spec 3 reflectance
+`scripts/data_processing/process_asd.R` — processes ASD Field Spec 3 reflectance
 data (reads `ProcessedReflectance_YYYYMMDD.txt` + `SpectralID_YYYYMMDD.csv`,
 calculates 19 Barnes et al. 2017 spectral indices, appends to
 `SpectralIndices_FullData.csv`). Configure paths at the top of the file before
