@@ -2,7 +2,7 @@
 # Batch compute step — run after the master CSV has been updated by
 # clean_soilinfiltration.R.
 #
-# Usage: Rscript scripts/data_cleaning/calculate_infiltration.R
+# Usage: Rscript scripts/data_processing/calculate_infiltration.R
 #
 # Reads data/Full/B2_SoilInfiltration_FullData.csv, looks up van Genuchten alpha/n
 # via the SoilType -> USDA texture mapping in data/reference/subplot_soiltexture.csv

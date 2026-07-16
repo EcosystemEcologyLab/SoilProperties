@@ -69,7 +69,11 @@ The following directories are git-tracked:
 
 | Variable | Purpose | Default |
 |---|---|---|
-| (none required) | No credentials are needed to run either pipeline | — |
+| `INFILTRATION_DATA_DIR` | Full path to the network folder containing daily infiltration `.xlsx` files | *(prompts if unset)* |
+| `SOILMOISTURE_DATA_DIR` | Full path to the network folder containing daily soil-moisture `.xlsx` files | *(prompts if unset)* |
+| `ASD_DATA_DIR` | Full path to the ASD base data folder (parent of `ProcessedReflectance/`, `SpectralID/`, `FullSpectralFieldData/`) | *(prompts if unset)* |
+
+Set these in a local `.env` file (copy `.env.example`; the file is gitignored). Windows, UNC, and Mac path examples are in `.env.example`.
 
 ---
 
@@ -91,12 +95,12 @@ The following directories are git-tracked:
 ### Compute pipeline (batch, run from terminal)
 
 ```
-Rscript scripts/data_cleaning/calculate_infiltration.R
+Rscript scripts/data_processing/calculate_infiltration.R
 ```
 
 ### ASD hyperspectral pipeline (standalone)
 
-`scripts/data_cleaning/process_asd.R` — processes ASD Field Spec 3 reflectance
+`scripts/data_processing/process_asd.R` — processes ASD Field Spec 3 reflectance
 data (reads `ProcessedReflectance_YYYYMMDD.txt` + `SpectralID_YYYYMMDD.csv`,
 calculates 19 Barnes et al. 2017 spectral indices, appends to
 `SpectralIndices_FullData.csv`). Configure paths at the top of the file before
@@ -156,7 +160,7 @@ Writes:
 
 All thresholds are declared as documented named constants in `scripts/functions_config/soilinfiltration_config.R`.
 
-### Compute pipeline — quality flags (`scripts/data_cleaning/calculate_infiltration.R`)
+### Compute pipeline — quality flags (`scripts/data_processing/calculate_infiltration.R`)
 
 Fit quality is not a data-entry error — flags do not stop the script; every replicate gets a row:
 
@@ -173,7 +177,7 @@ Fit quality is not a data-entry error — flags do not stop the script; every re
 
 ## Confidence and Quality Vocabulary
 
-The fit-quality flags in `scripts/data_cleaning/calculate_infiltration.R` map to the shared vocabulary from SCIENCE_PRINCIPLES.md:
+The fit-quality flags in `scripts/data_processing/calculate_infiltration.R` map to the shared vocabulary from SCIENCE_PRINCIPLES.md:
 
 | Shared label | `qc_flag` value |
 |---|---|
@@ -210,7 +214,7 @@ field day provides the full append history via `git log`.
 
 There are **no exclusion or unknown logs** in the entry pipeline. The stop-loudly model means no data is silently dropped — violations stop the script and the scientist fixes the source file. There is nothing to log.
 
-The compute pipeline (`scripts/data_cleaning/calculate_infiltration.R`) uses `qc_flag` values in the results CSV to flag replicates that could not yield a valid K (see QC and Quality Standards above). These are not "excluded" — they appear in the results with `K_cm_per_s = NA` and a descriptive `qc_flag`.
+The compute pipeline (`scripts/data_processing/calculate_infiltration.R`) uses `qc_flag` values in the results CSV to flag replicates that could not yield a valid K (see QC and Quality Standards above). These are not "excluded" — they appear in the results with `K_cm_per_s = NA` and a descriptive `qc_flag`.
 
 ---
 
