@@ -28,8 +28,12 @@ if (!interactive()) {
 #  CONFIGURATION — edit these paths before each run
 # ============================================================
 
-# Terminal users: run from the repo root with
-#   Rscript scripts/data_processing/process_asd.R
+# Set working directory to the project root by walking up from this script.
+.script_dir <- dirname(normalizePath(rstudioapi::getActiveDocumentContext()$path,
+                                     winslash = "/"))
+source(file.path(.script_dir, "..", "functions_config", "find_project_root.R"))
+setwd(.find_project_root(start = .script_dir))
+rm(.script_dir)
 
 date <- trimws(readline(
   "Enter the date for this ASD run (YYYYMMDD, e.g. 20261011): "
@@ -40,12 +44,11 @@ if (nchar(date) != 8 || !grepl("^[0-9]{8}$", date)) {
 date_str <- format(as.Date(date, "%Y%m%d"), "%Y-%m-%d")
 
 .resolve_asd_base_path <- function() {
-  win_default <- file.path("X:", "moore", "2026_B2_SoilProp", "Data", "ASD")
-  mac_default <- "/Volumes/projects/moore/2026_B2_SoilProp/Data/ASD"
-  if (dir.exists(win_default)) return(win_default)
-  if (dir.exists(mac_default)) return(mac_default)
+  env_path <- Sys.getenv("ASD_DATA_DIR")
+  if (nchar(env_path) > 0 && dir.exists(env_path)) return(env_path)
   cat(paste0(
     "Could not find the ASD data folder automatically.\n",
+    "Hint: set ASD_DATA_DIR in your .env file (see .env.example).\n",
     "On Windows, the folder is usually at X:\\moore\\2026_B2_SoilProp\\Data\\ASD\n",
     "On Mac, it may be at /Volumes/projects/moore/... or similar.\n",
     "Enter the full path to the ASD base data folder: "
