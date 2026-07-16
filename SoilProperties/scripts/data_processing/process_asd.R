@@ -357,14 +357,17 @@ log_msg(sprintf("  Summary: %d plant-date rows", nrow(summary_df)))
 log_msg(sprintf("Step 5: Appending spectral indices to %s", output_indices))
 
 if (file.exists(output_indices)) {
-  existing <- readr::read_csv(output_indices, show_col_types = FALSE)
+  existing <- readr::read_csv(output_indices, show_col_types = FALSE) |>
+    dplyr::mutate(date = as.character(date))
+  
+  summary_df <- summary_df |>
+    dplyr::mutate(date = as.character(date))
   
   # Only check duplicates against group_key_cols that exist in the existing
   # file too — guards against schema drift if a past run didn't have 'group'.
   dup_check_cols <- intersect(group_key_cols, names(existing))
   
-  dups <- dplyr::semi_join(summary_df, existing, by = dup_check_cols)
-  
+  dups <- dplyr::semi_join(summary_df, existing, by = dup_check_cols)  
   if (nrow(dups) > 0) {
     dup_desc <- paste(
       apply(dups[, dup_check_cols, drop = FALSE], 1, function(r)
