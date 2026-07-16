@@ -28,10 +28,12 @@ if (!interactive()) {
 #  CONFIGURATION — edit these paths before each run
 # ============================================================
 
-# Set working directory to this script's location
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
-# Terminal users: run from the repo root with
-#   Rscript scripts/data_processing/process_asd.R
+# Set working directory to the project root by walking up from this script.
+.script_dir <- dirname(normalizePath(rstudioapi::getActiveDocumentContext()$path,
+                                     winslash = "/"))
+source(file.path(.script_dir, "..", "functions_config", "find_project_root.R"))
+setwd(.find_project_root(start = .script_dir))
+rm(.script_dir)
 
 date <- trimws(readline(
   "Enter the date for this ASD run (YYYYMMDD, e.g. 20261011): "
