@@ -10,6 +10,11 @@
 .resolve_daily_data_dir <- function() {
   env_path <- Sys.getenv("INFILTRATION_DATA_DIR")
   if (nchar(env_path) > 0 && dir.exists(env_path)) return(env_path)
+  if (!interactive()) {
+    message("Non-interactive session: INFILTRATION_DATA_DIR is not set or ",
+            "does not exist. Set it in your .env file (see .env.example).")
+    return(NULL)
+  }
   cat(paste0(
     "Could not find the infiltration data folder automatically.\n",
     "Hint: set INFILTRATION_DATA_DIR in your .env file (see .env.example).\n",
