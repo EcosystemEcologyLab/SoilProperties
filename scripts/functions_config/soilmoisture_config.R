@@ -4,21 +4,18 @@
 
 # ── External paths ─────────────────────────────────────────────────────────────
 # DAILY_DATA_DIR: network drive folder containing daily entry .xlsx files.
-# Auto-resolved from known Windows (X:) and Mac (/Volumes/projects/...) defaults.
-# If neither is found, the user is prompted once per run to enter the path.
+# Resolved in order: SOILMOISTURE_DATA_DIR env var → interactive readline() prompt.
+# Set SOILMOISTURE_DATA_DIR in your .env file (see .env.example).
 .resolve_daily_data_dir <- function() {
-  win_default <- file.path("X:", "moore", "2026_B2_SoilProp", "Data",
-                           "SoilMoisture", "B2_SoilMoisture_DataSheet_DailyData")
-  mac_default <- paste0("/Volumes/projects/moore/2026_B2_SoilProp/Data/",
-                        "SoilMoisture/B2_SoilMoisture_DataSheet_DailyData")
-  if (dir.exists(win_default)) return(win_default)
-  if (dir.exists(mac_default)) return(mac_default)
+  env_path <- Sys.getenv("SOILMOISTURE_DATA_DIR")
+  if (nchar(env_path) > 0 && dir.exists(env_path)) return(env_path)
   if (!interactive()) {
     message("Non-interactive session: DAILY_DATA_DIR not resolved.")
     return(NULL)
   }
   cat(paste0(
     "Could not find the soil moisture data folder automatically.\n",
+    "Hint: set SOILMOISTURE_DATA_DIR in your .env file (see .env.example).\n",
     "On Windows: X:\\moore\\2026_B2_SoilProp\\Data\\SoilMoisture\\",
     "B2_SoilMoisture_DataSheet_DailyData\n",
     "On Mac: /Volumes/projects/moore/... or similar.\n",

@@ -5,17 +5,14 @@
 # ── Input paths ────────────────────────────────────────────────────────────────
 # DAILY_DATA_DIR: network drive folder containing daily entry .xlsx files.
 # Confirmed by Lindsey Bell 2026-06-04.
-# Auto-resolved from known Windows (X:) and Mac (/Volumes/projects/...) defaults.
-# If neither is found, the user is prompted once per run to enter the path.
+# Resolved in order: INFILTRATION_DATA_DIR env var → interactive readline() prompt.
+# Set INFILTRATION_DATA_DIR in your .env file (see .env.example).
 .resolve_daily_data_dir <- function() {
-  win_default <- file.path("X:", "moore", "2026_B2_SoilProp", "Data",
-                           "Infiltration", "Soil_Infiltration_FieldData")
-  mac_default <- paste0("/Volumes/projects/moore/2026_B2_SoilProp/Data/",
-                        "Infiltration/Soil_Infiltration_FieldData")
-  if (dir.exists(win_default)) return(win_default)
-  if (dir.exists(mac_default)) return(mac_default)
+  env_path <- Sys.getenv("INFILTRATION_DATA_DIR")
+  if (nchar(env_path) > 0 && dir.exists(env_path)) return(env_path)
   cat(paste0(
     "Could not find the infiltration data folder automatically.\n",
+    "Hint: set INFILTRATION_DATA_DIR in your .env file (see .env.example).\n",
     "On Windows, the folder is usually at ",
     "X:\\moore\\2026_B2_SoilProp\\Data\\Infiltration\\Soil_Infiltration_FieldData\n",
     "On Mac, it may be at /Volumes/projects/moore/... or similar.\n",

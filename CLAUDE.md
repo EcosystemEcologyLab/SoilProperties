@@ -69,7 +69,11 @@ The following directories are git-tracked:
 
 | Variable | Purpose | Default |
 |---|---|---|
-| (none required) | No credentials are needed to run either pipeline | — |
+| `INFILTRATION_DATA_DIR` | Full path to the network folder containing daily infiltration `.xlsx` files | *(prompts if unset)* |
+| `SOILMOISTURE_DATA_DIR` | Full path to the network folder containing daily soil-moisture `.xlsx` files | *(prompts if unset)* |
+| `ASD_DATA_DIR` | Full path to the ASD base data folder (parent of `ProcessedReflectance/`, `SpectralID/`, `FullSpectralFieldData/`) | *(prompts if unset)* |
+
+Set these in a local `.env` file (copy `.env.example`; the file is gitignored). Windows, UNC, and Mac path examples are in `.env.example`.
 
 ---
 
