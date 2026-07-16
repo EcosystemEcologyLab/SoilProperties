@@ -72,12 +72,15 @@ The following directories are git-tracked:
 | `INFILTRATION_DATA_DIR` | Full path to the network folder containing daily infiltration `.xlsx` files | *(prompts if unset)* |
 | `SOILMOISTURE_DATA_DIR` | Full path to the network folder containing daily soil-moisture `.xlsx` files | *(prompts if unset)* |
 | `ASD_DATA_DIR` | Full path to the ASD base data folder (parent of `ProcessedReflectance/`, `SpectralID/`, `FullSpectralFieldData/`) | *(prompts if unset)* |
+| `TRAILCAM_RAW_IMAGE_DIR` | Root folder of trail camera images; must contain one subdirectory per camera ID | *(prompts if unset)* |
 
 Set these in a local `.env` file (copy `.env.example`; the file is gitignored). Windows, UNC, and Mac path examples are in `.env.example`.
 
 ---
 
 ## Pipeline Execution Order
+
+**Note:** The entry pipelines (clean_soilinfiltration.R, clean_soilmoisture.R, process_asd.R) and the trail camera pipeline run locally in RStudio on a machine with the lab network share mounted — they are not designed to run inside the devcontainer or Codespaces environment, which has no network mount configured.
 
 ### Entry pipeline (interactive, run from RStudio)
 
@@ -226,6 +229,15 @@ The compute pipeline (`scripts/data_processing/calculate_infiltration.R`) uses `
 | Item | Tracked in |
 |---|---|
 | [Description] | [GitHub issue URL] |
+
+### Pending Package Additions
+
+The following packages are required by the trail camera vegetation-index pipeline and must be reviewed and approved by the PI before `renv::snapshot()` locks them in. Do not run `renv::snapshot()` until both are approved.
+
+| Package | Purpose | System dependency |
+|---|---|---|
+| `magick` | Image I/O, cropping, and OCR — reads and crops JPEG/PNG images; uses its bundled Tesseract to read timestamps embedded in image frames | ImageMagick library (`libmagick++-dev` on Linux; `brew install imagemagick` on Mac) |
+| `exifr` | EXIF timestamp extraction as a fallback when frame-embedded timestamps are unavailable or unreadable by OCR | System `exiftool` (`libimage-exiftool-perl` on Linux; `brew install exiftool` on Mac) |
 
 ---
 
