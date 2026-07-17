@@ -12,10 +12,6 @@
 #   data/reference/trailcamera/<camera_id>/roi_<roi_name>_mask.rds
 #   data/reference/trailcamera/<camera_id>/roi_<roi_name>_polygon.rds
 #
-# NOTE: ROI_REFERENCE_DIR in trailcamera_config.R resolves to
-#   data/reference/trailcamera_roi/ (note _roi suffix). This script uses
-#   data/reference/trailcamera/ as specified in the pipeline design doc —
-#   the two paths need to be reconciled in a future config update.
 #
 # QC figures (gitignored):
 #   figures/qc/trailcamera_roi_check_<camera_id>_<roi_name>.png
