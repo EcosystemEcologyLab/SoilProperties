@@ -64,7 +64,7 @@ RAW_IMAGE_DIR <- .resolve_trailcam_raw_dir()
 # ── Reference and output paths ────────────────────────────────────────────────
 # All paths are relative to the project root. Scripts that source this config
 # must set their working directory to the project root first.
-ROI_REFERENCE_DIR  <- file.path("data", "reference", "trailcamera_roi")
+ROI_REFERENCE_DIR  <- file.path("data", "reference", "trailcamera")
 OVERRIDE_FILE_PATH <- file.path("data", "overrides", "trailcamera_overrides.csv")
 EXCLUSION_LOG_PATH <- file.path("outputs", "trailcamera_exclusion_log.csv")
 UNKNOWN_LOG_PATH   <- file.path("outputs", "trailcamera_unknown_log.csv")
