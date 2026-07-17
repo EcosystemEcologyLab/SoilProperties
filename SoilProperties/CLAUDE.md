@@ -76,6 +76,8 @@ The following directories are git-tracked:
 
 Set these in a local `.env` file (copy `.env.example`; the file is gitignored). Windows, UNC, and Mac path examples are in `.env.example`.
 
+`.Rprofile` loads `.env` automatically at session start via `dotenv::load_dot_env()` — contributors do not need to call it manually.
+
 ---
 
 ## Pipeline Execution Order

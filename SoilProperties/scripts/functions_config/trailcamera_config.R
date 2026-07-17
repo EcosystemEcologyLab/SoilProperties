@@ -57,7 +57,9 @@ SCHEDULE_INTERVAL_MIN <- 20L  # images expected every 20 minutes
   path
 }
 RAW_IMAGE_DIR <- .resolve_trailcam_raw_dir()
-rm(.resolve_trailcam_raw_dir)
+# .resolve_trailcam_raw_dir is intentionally NOT rm()'d — check_trailcamera_config()
+# calls it as its default argument so every no-arg call re-resolves live instead
+# of trusting the source-time snapshot in RAW_IMAGE_DIR.
 
 # ── Reference and output paths ────────────────────────────────────────────────
 # All paths are relative to the project root. Scripts that source this config
@@ -80,7 +82,7 @@ FIGURES_DIR        <- file.path("figures", "trailcamera")
 #'
 #' @param raw_dir Root directory to check. Defaults to \code{RAW_IMAGE_DIR}.
 #' @return \code{TRUE} invisibly when all checks pass.
-check_trailcamera_config <- function(raw_dir = RAW_IMAGE_DIR) {
+check_trailcamera_config <- function(raw_dir = .resolve_trailcam_raw_dir()) {
   if (is.null(raw_dir)) {
     stop(
       "RAW_IMAGE_DIR is NULL — the trail camera image directory has not been ",
