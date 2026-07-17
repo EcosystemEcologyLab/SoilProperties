@@ -29,7 +29,6 @@ infil_full       <- read_if_data("data/Full/B2_SoilInfiltration_FullData.csv")
 moisture         <- read_if_data("data/Full/B2_SoilMoisture_FullData.csv")
 spectra          <- read_if_data("data/Full/SpectralIndices_FullData.csv")
 infil_results    <- read_if_data("data/processed/B2_SoilInfiltration_Results.csv")
-moisture_summary <- read_if_data("data/processed/B2_SoilMoisture_Summary.csv")
 # Jmax/Vcmax: file not yet available; update path when data arrives
 jmax_vcmax       <- read_if_data("data/B2_GasExchange_FullData.csv")
 
@@ -71,17 +70,17 @@ if (!is.null(spectra)) {
 }
 
 # ── Figure 2: Soil moisture per-plant daily averages ─────────────────────────
-# Reads the wide-format summary produced by summarise_soilmoisture.R.
-# Pivots back to long for faceting by sensor type (T vs M).
+# Summarises the git-tracked full-data CSV directly so CI is self-sufficient
+# and does not depend on the gitignored data/processed/B2_SoilMoisture_Summary.csv.
 
-if (!is.null(moisture_summary)) {
-  moisture_long <- moisture_summary |>
-    mutate(Date = as.Date(Date)) |>
-    tidyr::pivot_longer(
-      cols         = tidyr::matches("_(mean|sd)$"),
-      names_to     = c("sensor_depth", ".value"),
-      names_pattern = "^(.+)_(mean|sd)$"
-    ) |>
+if (!is.null(moisture)) {
+  moisture_long <- moisture |>
+    mutate(Date = as.Date(Date),
+           sensor_depth = paste0(Sensor, "_", Depth)) |>
+    group_by(Date, SoilType, PlantID, sensor_depth) |>
+    summarise(mean = mean(Value, na.rm = TRUE),
+              sd   = sd(Value,   na.rm = TRUE),
+              .groups = "drop") |>
     mutate(
       Sensor       = sub("_.*$", "", sensor_depth),
       sensor_label = dplyr::case_when(
@@ -112,7 +111,7 @@ if (!is.null(moisture_summary)) {
          width = 10, height = 8, dpi = 150)
   message("Saved: figures/summary/soilmoisture_summary.png")
 } else {
-  message("B2_SoilMoisture_Summary.csv has no data — skipping soil moisture figure")
+  message("B2_SoilMoisture_FullData.csv has no data — skipping soil moisture figure")
 }
 
 # ── Figure 3: Jmax and Vcmax timeseries ──────────────────────────────────────
