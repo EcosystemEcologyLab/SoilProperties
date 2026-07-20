@@ -5,8 +5,8 @@ on:
     branches:
       - main
     paths:
-      - 'data/Full/*_FullData.csv'
-      - 'data/processed/B2_SoilInfiltration_Results.csv'
+      - 'SoilProperties/data/Full/*_FullData.csv'
+      - 'SoilProperties/data/processed/B2_SoilInfiltration_Results.csv'
   workflow_dispatch:
 
 jobs:
@@ -14,6 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
+    defaults:
+      run:
+        working-directory: SoilProperties
 
     steps:
       - name: Checkout
