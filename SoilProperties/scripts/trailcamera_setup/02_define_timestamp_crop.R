@@ -4,6 +4,7 @@
 #
 # Usage (from RStudio with working directory = project root):
 #   source("scripts/trailcamera_setup/02_define_timestamp_crop.R")
+#   windows(width = 10, height = 8)
 #   define_timestamp_crop("0C")
 #
 # Output location (git-tracked):

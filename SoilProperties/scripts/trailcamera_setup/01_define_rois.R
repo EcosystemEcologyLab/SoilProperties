@@ -5,6 +5,7 @@
 #
 # Usage (from RStudio with working directory = project root):
 #   source("scripts/trailcamera_setup/01_define_rois.R")
+#   windows(width = 10, height = 8)
 #   define_roi("0C", "mesquite")
 #   batch_define_rois("2C", c("mesquite", "grass"))
 #
